@@ -116,8 +116,8 @@ func (r *Route) deleteRoute(route *v1.Route) {
 func (r *Route) createRoute(metadata *mcp.Metadata, host string) {
 	namespace, gatewayName := util.ExtractNameNamespace(metadata.Name)
 	if host == "*" {
-		fmt.Printf("Gateway %s: Wildcard * is not supported at the moment. Skipping route creation for this host.\n", metadata.Name)
-		return
+		fmt.Printf("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create one instead.\n", metadata.Name)
+		host = ""
 	}
 
 	// FIXME: Can we create the route in the same namespace as the Gateway pointing to a service in the istio-system namespace?
@@ -140,6 +140,10 @@ func (r *Route) createRoute(metadata *mcp.Metadata, host string) {
 
 	if err != nil {
 		fmt.Printf("Error creating a route for host %s: %s\n", host, err)
+	}
+
+	if host == "" {
+		fmt.Printf("Generated hostname by OpenShift: %s\n", nr.Spec.Host)
 	}
 
 	r.routes[host] = &syncedRoute{
