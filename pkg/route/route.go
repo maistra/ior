@@ -85,7 +85,7 @@ func (r *Route) Sync(gatewaysInfo []GatewayInfo) error {
 				if ok {
 					r.editRoute(gatewayInfo.Metadata, host)
 				} else {
-					r.createRoute(gatewayInfo.Metadata, host)
+					r.createRoute(gatewayInfo.Metadata, host, server.Tls != nil)
 				}
 			}
 		}
@@ -113,11 +113,16 @@ func (r *Route) deleteRoute(route *v1.Route) {
 	}
 }
 
-func (r *Route) createRoute(metadata *mcp.Metadata, host string) {
+func (r *Route) createRoute(metadata *mcp.Metadata, host string, tls bool) {
 	namespace, gatewayName := util.ExtractNameNamespace(metadata.Name)
 	if host == "*" {
 		fmt.Printf("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create one instead.\n", metadata.Name)
 		host = ""
+	}
+
+	var tlsConfig *v1.TLSConfig
+	if tls {
+		tlsConfig = &v1.TLSConfig{Termination: v1.TLSTerminationPassthrough}
 	}
 
 	// FIXME: Can we create the route in the same namespace as the Gateway pointing to a service in the istio-system namespace?
@@ -135,6 +140,7 @@ func (r *Route) createRoute(metadata *mcp.Metadata, host string) {
 			To: v1.RouteTargetReference{
 				Name: ingressService,
 			},
+			TLS: tlsConfig,
 		},
 	})
 
