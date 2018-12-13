@@ -2,6 +2,7 @@ package route
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/maistra/ior/pkg/util"
 	v1 "github.com/openshift/api/route/v1"
@@ -13,10 +14,14 @@ import (
 )
 
 const (
-	istioNamespace   = "istio-system"
-	ingressService   = "istio-ingressgateway"
-	generatedByLabel = "generated-by"
-	generatedByValue = "ior"
+	maistraPrefix          = "maistra.io/"
+	istioNamespace         = "istio-system"
+	ingressService         = "istio-ingressgateway"
+	generatedByLabel       = maistraPrefix + "generated-by"
+	generatedByValue       = "ior"
+	originalHostAnnotation = maistraPrefix + "original-host"
+	gatewayNameLabel       = maistraPrefix + "gateway-name"
+	gatewayNamespaceLabel  = maistraPrefix + "gateway-namespace"
 )
 
 // GatewayInfo ...
@@ -53,6 +58,13 @@ func New() (*Route, error) {
 	return r, nil
 }
 
+func getHost(route v1.Route) string {
+	if host := route.ObjectMeta.Annotations[originalHostAnnotation]; host != "" {
+		return host
+	}
+	return route.Spec.Host
+}
+
 func (r *Route) initRoutes() error {
 	routes, err := r.client.Routes(istioNamespace).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", generatedByLabel, generatedByValue),
@@ -63,9 +75,8 @@ func (r *Route) initRoutes() error {
 
 	r.routes = make(map[string]*syncedRoute, len(routes.Items))
 	for _, route := range routes.Items {
-		r.routes[route.Spec.Host] = &syncedRoute{
+		r.routes[getHost(route)] = &syncedRoute{
 			route: &route,
-			valid: true,
 		}
 	}
 	return nil
@@ -107,17 +118,24 @@ func (r *Route) editRoute(metadata *mcp.Metadata, host string) {
 func (r *Route) deleteRoute(route *v1.Route) {
 	var immediate int64
 	err := r.client.Routes(istioNamespace).Delete(route.ObjectMeta.Name, &metav1.DeleteOptions{GracePeriodSeconds: &immediate})
-	delete(r.routes, route.Spec.Host)
+	delete(r.routes, getHost(*route))
 	if err != nil {
-		fmt.Printf("Error deleting the route %s: %s\n", route.ObjectMeta.Name, err)
+		fmt.Printf("Error deleting route %s: %s\n", route.ObjectMeta.Name, err)
 	}
 }
 
-func (r *Route) createRoute(metadata *mcp.Metadata, host string, tls bool) {
-	namespace, gatewayName := util.ExtractNameNamespace(metadata.Name)
-	if host == "*" {
+func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls bool) {
+	var wildcard = v1.WildcardPolicyNone
+	actualHost := originalHost
+
+	if originalHost == "*" {
 		fmt.Printf("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create one instead.\n", metadata.Name)
-		host = ""
+		actualHost = ""
+	} else if strings.HasPrefix(originalHost, "*.") {
+		// Wildcards are not enabled by default in OCP 3.x.
+		// See https://docs.openshift.com/container-platform/3.11/install_config/router/default_haproxy_router.html#using-wildcard-routes
+		wildcard = v1.WildcardPolicySubdomain
+		actualHost = "wildcard." + strings.TrimPrefix(originalHost, "*.")
 	}
 
 	var tlsConfig *v1.TLSConfig
@@ -125,34 +143,40 @@ func (r *Route) createRoute(metadata *mcp.Metadata, host string, tls bool) {
 		tlsConfig = &v1.TLSConfig{Termination: v1.TLSTerminationPassthrough}
 	}
 
+	namespace, gatewayName := util.ExtractNameNamespace(metadata.Name)
+
 	// FIXME: Can we create the route in the same namespace as the Gateway pointing to a service in the istio-system namespace?
 	nr, err := r.client.Routes(istioNamespace).Create(&v1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", gatewayName),
 			Labels: map[string]string{
-				generatedByLabel:    generatedByValue,
-				"gateway-namespace": namespace,
-				"gateway-name":      gatewayName,
+				generatedByLabel:      generatedByValue,
+				gatewayNamespaceLabel: namespace,
+				gatewayNameLabel:      gatewayName,
+			},
+			Annotations: map[string]string{
+				originalHostAnnotation: originalHost,
 			},
 		},
 		Spec: v1.RouteSpec{
-			Host: host,
+			Host: actualHost,
 			To: v1.RouteTargetReference{
 				Name: ingressService,
 			},
-			TLS: tlsConfig,
+			TLS:            tlsConfig,
+			WildcardPolicy: wildcard,
 		},
 	})
 
 	if err != nil {
-		fmt.Printf("Error creating a route for host %s: %s\n", host, err)
+		fmt.Printf("Error creating a route for host %s: %s\n", originalHost, err)
 	}
 
-	if host == "" {
+	if actualHost == "" {
 		fmt.Printf("Generated hostname by OpenShift: %s\n", nr.Spec.Host)
 	}
 
-	r.routes[host] = &syncedRoute{
+	r.routes[originalHost] = &syncedRoute{
 		route: nr,
 		valid: true,
 	}

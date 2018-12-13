@@ -1,3 +1,3 @@
-FROM busybox
+FROM scratch
 ADD main /main
 CMD [ "/main" ]

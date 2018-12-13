@@ -37,14 +37,19 @@ subjects:
     namespace: ior
 
 ---
-apiVersion: v1
-kind: Pod
+apiVersion: extensions/v1beta1
+kind: Deployment
 metadata:
   name: ior
-  namespace: ior
 spec:
-  serviceAccountName: ior
-  containers:
-  - name: ior
-    image: ior
-    imagePullPolicy: IfNotPresent
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        maistra: ior
+    spec:
+      serviceAccountName: ior
+      containers:
+      - image: ior
+        imagePullPolicy: IfNotPresent
+        name: ior
