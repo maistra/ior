@@ -1,3 +1,3 @@
 FROM scratch
-ADD main /main
-CMD [ "/main" ]
+ADD ior /ior
+CMD [ "/ior" ]

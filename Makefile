@@ -1,16 +1,16 @@
 default: build
 
+EXE = ior
+
 clean:
-	rm -f main
+	rm -f ./cmd/${EXE} && rm -f container/${EXE}
 
+GOSTATIC = -ldflags '-extldflags "-static"'
 build:
-	go build -o main -ldflags "-linkmode external -extldflags -static" ./cmd/...
-
-copy: build
-	kubectl -n ior cp main busybox:/main
+	CGO_ENABLED=0 go build -o ./cmd/${EXE} ${GOSTATIC} ./cmd/...
 
 image: build
-	cp main container/ && \
+	cp ./cmd/${EXE} container/ && \
 	cd container && \
 	docker build -t ior .
 

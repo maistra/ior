@@ -10,4 +10,5 @@
 .vscode/
 # vi backups
 *.bak
-main
+cmd/ior
+container/ior
