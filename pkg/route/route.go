@@ -10,6 +10,7 @@ import (
 	mcp "istio.io/api/mcp/v1alpha1"
 	networking "istio.io/api/networking/v1alpha3"
 	"istio.io/istio/pkg/kube"
+	"istio.io/istio/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -82,6 +83,16 @@ func (r *Route) initRoutes() error {
 	return nil
 }
 
+// DumpRoutes ...
+func (r *Route) DumpRoutes() {
+	out := fmt.Sprintf("%d item(ns)\n", len(r.routes))
+	for host, route := range r.routes {
+		out += fmt.Sprintf("%s: %s/%s\n", host, route.route.ObjectMeta.Namespace, route.route.ObjectMeta.Name)
+	}
+
+	log.Debugf("Current state: %s\n", out)
+}
+
 // Sync ...
 func (r *Route) Sync(gatewaysInfo []GatewayInfo) error {
 	for _, sRoute := range r.routes {
@@ -112,24 +123,31 @@ func (r *Route) Sync(gatewaysInfo []GatewayInfo) error {
 }
 
 func (r *Route) editRoute(metadata *mcp.Metadata, host string) {
+	log.Debugf("Editing route for hostname %s\n", host)
 	r.routes[host].valid = true
 }
 
 func (r *Route) deleteRoute(route *v1.Route) {
 	var immediate int64
+	host := getHost(*route)
+	log.Debugf("Deleting route %s (hostname: %s)\n", route.ObjectMeta.Name, host)
 	err := r.client.Routes(istioNamespace).Delete(route.ObjectMeta.Name, &metav1.DeleteOptions{GracePeriodSeconds: &immediate})
 	delete(r.routes, getHost(*route))
 	if err != nil {
-		fmt.Printf("Error deleting route %s: %s\n", route.ObjectMeta.Name, err)
+		log.Errorf("Error deleting route %s: %s\n", route.ObjectMeta.Name, err)
 	}
+
+	log.Infof("Deleted route %s/%s (hostname: %s)\n", route.ObjectMeta.Namespace, route.ObjectMeta.Name, host)
 }
 
 func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls bool) {
 	var wildcard = v1.WildcardPolicyNone
 	actualHost := originalHost
 
+	log.Debugf("Creating route for hostname %s\n", originalHost)
+
 	if originalHost == "*" {
-		fmt.Printf("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create one instead.\n", metadata.Name)
+		log.Infof("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create one instead.\n", metadata.Name)
 		actualHost = ""
 	} else if strings.HasPrefix(originalHost, "*.") {
 		// Wildcards are not enabled by default in OCP 3.x.
@@ -169,12 +187,14 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 	})
 
 	if err != nil {
-		fmt.Printf("Error creating a route for host %s: %s\n", originalHost, err)
+		log.Errorf("Error creating a route for host %s: %s\n", originalHost, err)
 	}
 
 	if actualHost == "" {
-		fmt.Printf("Generated hostname by OpenShift: %s\n", nr.Spec.Host)
+		log.Infof("Generated hostname by OpenShift: %s\n", nr.Spec.Host)
 	}
+
+	log.Infof("Created route %s/%s for hostname %s\n", nr.ObjectMeta.Namespace, nr.ObjectMeta.Name, originalHost)
 
 	r.routes[originalHost] = &syncedRoute{
 		route: nr,
