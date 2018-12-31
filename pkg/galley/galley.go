@@ -3,11 +3,11 @@ package galley
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log"
 
 	"google.golang.org/grpc"
 	mcpapi "istio.io/api/mcp/v1alpha1"
+
+	"istio.io/istio/pkg/log"
 
 	"github.com/maistra/ior/pkg/route"
 	"github.com/maistra/ior/pkg/util"
@@ -16,12 +16,11 @@ import (
 )
 
 // ConnectToGalley ...
-func ConnectToGalley() {
+func ConnectToGalley(galleyAddr string) {
 	ctx := context.Background()
-	addr := "istio-galley.istio-system:9901"
-	conn, err := grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, galleyAddr, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("Unable to dial MCP Server %q: %v", addr, err)
+		log.Fatalf("Unable to dial MCP Server %q: %v", galleyAddr, err)
 	}
 
 	r, err := route.New()
@@ -44,17 +43,18 @@ type update struct {
 }
 
 func (u *update) Apply(change *mcpclient.Change) error {
+	log.Debugf("Got info from MCP\n")
 	gatewaysInfo := []route.GatewayInfo{}
 
 	for i, obj := range change.Objects {
 		namespace, name := util.ExtractNameNamespace(obj.Metadata.Name)
-		fmt.Printf("Object %d: Namespace = %s, Name = %s\n", i+1, namespace, name)
-		fmt.Printf("Metadata = %v\n", obj.Metadata)
+
+		log.Debugf("Object %d: Namespace = %s, Name = %s, Metadata = %v\n", i+1, namespace, name, obj.Metadata)
 		gateway, ok := obj.Resource.(*networking.Gateway)
 		if !ok {
 			return errors.New("Error decoding gateway")
 		}
-		fmt.Printf("Gateway = %v\n", gateway)
+		log.Debugf("Gateway = %v\n", gateway)
 		gatewaysInfo = append(gatewaysInfo, route.GatewayInfo{
 			Metadata: obj.Metadata,
 			Gateway:  gateway,

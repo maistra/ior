@@ -1,9 +1,11 @@
 package main
 
-import (
-	"github.com/maistra/ior/pkg/galley"
-)
+import "os"
 
 func main() {
-	galley.ConnectToGalley()
+	rootCmd := getRootCmd(os.Args[1:])
+
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(-1)
+	}
 }

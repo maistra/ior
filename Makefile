@@ -12,7 +12,10 @@ build:
 image: build
 	cp ./cmd/${EXE} container/ && \
 	cd container && \
-	docker build -t ior .
+	docker build -t docker.io/maistra/ior .
+
+push: image
+	docker push docker.io/maistra/ior
 
 pod: build image
 	kubectl -n ior delete --ignore-not-found=true --now=true ns ior && \
