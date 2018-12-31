@@ -76,8 +76,9 @@ func (r *Route) initRoutes() error {
 
 	r.routes = make(map[string]*syncedRoute, len(routes.Items))
 	for _, route := range routes.Items {
-		r.routes[getHost(route)] = &syncedRoute{
-			route: &route,
+		localRoute := route
+		r.routes[getHost(localRoute)] = &syncedRoute{
+			route: &localRoute,
 		}
 	}
 	return nil
@@ -133,11 +134,11 @@ func (r *Route) deleteRoute(route *v1.Route) {
 	log.Debugf("Deleting route %s (hostname: %s)\n", route.ObjectMeta.Name, host)
 	err := r.client.Routes(istioNamespace).Delete(route.ObjectMeta.Name, &metav1.DeleteOptions{GracePeriodSeconds: &immediate})
 	delete(r.routes, getHost(*route))
-	if err != nil {
+	if err == nil {
+		log.Infof("Deleted route %s/%s (hostname: %s)\n", route.ObjectMeta.Namespace, route.ObjectMeta.Name, host)
+	} else {
 		log.Errorf("Error deleting route %s: %s\n", route.ObjectMeta.Name, err)
 	}
-
-	log.Infof("Deleted route %s/%s (hostname: %s)\n", route.ObjectMeta.Namespace, route.ObjectMeta.Name, host)
 }
 
 func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls bool) {
