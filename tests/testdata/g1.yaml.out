@@ -1,0 +1,102 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "route.openshift.io/v1",
+            "kind": "Route",
+            "metadata": {
+                "annotations": {
+                    "maistra.io/original-host": "www.bookinfo.com"
+                },
+                "creationTimestamp": "2019-01-02T13:48:32Z",
+                "generateName": "gateway-test1-",
+                "labels": {
+                    "maistra.io/gateway-name": "gateway-test1",
+                    "maistra.io/gateway-namespace": "xuxa",
+                    "maistra.io/generated-by": "ior"
+                },
+                "name": "gateway-test1-7nb4t",
+                "namespace": "istio-system",
+                "resourceVersion": "48718",
+                "selfLink": "/apis/route.openshift.io/v1/namespaces/istio-system/routes/gateway-test1-7nb4t",
+                "uid": "17e9fb41-0e95-11e9-a953-080027a85002"
+            },
+            "spec": {
+                "host": "www.bookinfo.com",
+                "to": {
+                    "kind": "Service",
+                    "name": "istio-ingressgateway",
+                    "weight": 100
+                },
+                "wildcardPolicy": "None"
+            },
+            "status": {
+                "ingress": [
+                    {
+                        "conditions": [
+                            {
+                                "lastTransitionTime": "2019-01-02T13:48:32Z",
+                                "status": "True",
+                                "type": "Admitted"
+                            }
+                        ],
+                        "host": "www.bookinfo.com",
+                        "routerName": "router",
+                        "wildcardPolicy": "None"
+                    }
+                ]
+            }
+        },
+        {
+            "apiVersion": "route.openshift.io/v1",
+            "kind": "Route",
+            "metadata": {
+                "annotations": {
+                    "maistra.io/original-host": "bookinfo.example.com"
+                },
+                "creationTimestamp": "2019-01-02T13:48:32Z",
+                "generateName": "gateway-test1-",
+                "labels": {
+                    "maistra.io/gateway-name": "gateway-test1",
+                    "maistra.io/gateway-namespace": "xuxa",
+                    "maistra.io/generated-by": "ior"
+                },
+                "name": "gateway-test1-l99rl",
+                "namespace": "istio-system",
+                "resourceVersion": "48719",
+                "selfLink": "/apis/route.openshift.io/v1/namespaces/istio-system/routes/gateway-test1-l99rl",
+                "uid": "17ec6442-0e95-11e9-a953-080027a85002"
+            },
+            "spec": {
+                "host": "bookinfo.example.com",
+                "to": {
+                    "kind": "Service",
+                    "name": "istio-ingressgateway",
+                    "weight": 100
+                },
+                "wildcardPolicy": "None"
+            },
+            "status": {
+                "ingress": [
+                    {
+                        "conditions": [
+                            {
+                                "lastTransitionTime": "2019-01-02T13:48:32Z",
+                                "status": "True",
+                                "type": "Admitted"
+                            }
+                        ],
+                        "host": "bookinfo.example.com",
+                        "routerName": "router",
+                        "wildcardPolicy": "None"
+                    }
+                ]
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": "",
+        "selfLink": ""
+    }
+}

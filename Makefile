@@ -21,3 +21,6 @@ pod: build image
 	kubectl -n ior delete --ignore-not-found=true --now=true ns ior && \
 	kubectl create ns ior && \
 	kubectl -n ior apply -f container/pod.yaml
+
+test:
+	./tests/test.sh

@@ -1,0 +1,56 @@
+{
+    "apiVersion": "v1",
+    "items": [
+        {
+            "apiVersion": "route.openshift.io/v1",
+            "kind": "Route",
+            "metadata": {
+                "annotations": {
+                    "maistra.io/original-host": "*.example.com"
+                },
+                "creationTimestamp": "2019-01-03T14:41:45Z",
+                "generateName": "gateway-test2-",
+                "labels": {
+                    "maistra.io/gateway-name": "gateway-test2",
+                    "maistra.io/gateway-namespace": "xuxa",
+                    "maistra.io/generated-by": "ior"
+                },
+                "name": "gateway-test2-xv4z4",
+                "namespace": "istio-system",
+                "resourceVersion": "187077",
+                "selfLink": "/apis/route.openshift.io/v1/namespaces/istio-system/routes/gateway-test2-xv4z4",
+                "uid": "b156bae6-0f65-11e9-9ba3-080027a85002"
+            },
+            "spec": {
+                "host": "wildcard.example.com",
+                "to": {
+                    "kind": "Service",
+                    "name": "istio-ingressgateway",
+                    "weight": 100
+                },
+                "wildcardPolicy": "Subdomain"
+            },
+            "status": {
+                "ingress": [
+                    {
+                        "conditions": [
+                            {
+                                "lastTransitionTime": "2019-01-03T14:41:45Z",
+                                "status": "True",
+                                "type": "Admitted"
+                            }
+                        ],
+                        "host": "wildcard.example.com",
+                        "routerName": "router",
+                        "wildcardPolicy": "Subdomain"
+                    }
+                ]
+            }
+        }
+    ],
+    "kind": "List",
+    "metadata": {
+        "resourceVersion": "",
+        "selfLink": ""
+    }
+}
