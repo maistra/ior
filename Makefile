@@ -1,6 +1,9 @@
 default: build
 
 EXE = ior
+HUB ?= docker.io/maistra
+TAG ?= latest
+NAMESPACE ?= ior
 
 clean:
 	rm -f ./cmd/${EXE} && rm -f container/${EXE}
@@ -12,15 +15,15 @@ build:
 image: build
 	cp ./cmd/${EXE} container/ && \
 	cd container && \
-	docker build -t docker.io/maistra/ior .
+	docker build -t ${HUB}/ior:${TAG} .
 
 push: image
-	docker push docker.io/maistra/ior
+	docker push ${HUB}/ior:${TAG}
 
 pod: build image
 	kubectl -n ior delete --ignore-not-found=true --now=true ns ior && \
 	kubectl create ns ior && \
-	kubectl -n ior apply -f container/pod.yaml
+	sed -e "s|\$${HUB}|${HUB}|g" -e "s|\$${TAG}|${TAG}|g" -e "s|\$${NAMESPACE}|${NAMESPACE}|g" container/pod.yaml | kubectl -n ior apply -f-
 
 test:
 	./tests/test.sh

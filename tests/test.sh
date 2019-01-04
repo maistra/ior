@@ -1,13 +1,69 @@
 #!/bin/bash
 
 TEST_DIR="$(cd "$(dirname "${0}")" && pwd -P)"
+ROOT_DIR="$(cd "$(dirname "${0}")/.." && pwd -P)"
 OC=${OC:-oc}
 ISTIO_NS=${ISTIO_NS:-"istio-system"}
 NAMESPACE=""
+HUB=${HUB:-"docker.io/maistra"}
+TAG=${TAG:-"latest"}
 
 function deleteNamespace() {
+  if [ -z "${1}" ]; then
+    ${OC} delete --ignore-not-found=true --now=true namespace -l "maistra.io/ior-test=true"
+    return
+  fi
+
   ${OC} delete --ignore-not-found=true --now=true namespace "${1}"
 }
+
+function waitFor() {
+  local maxAttempts="10"
+  local ready
+
+  echo -n "Waiting for IOR deployment to complete... "
+
+  for i in $(seq 1 ${maxAttempts}); do
+    ready=$(${OC} -n "${IOR_NAMESPACE}" get pod -l maistra=ior -o jsonpath='{.items..status.containerStatuses[0].ready}')
+
+    if [ "${ready}" == "true" ]; then
+      echo "OK"
+      break
+    fi
+
+    if [ "${i}" == "${maxAttempts}" ]; then
+      echo "Error"
+      exit 1
+    fi
+
+    sleep 5
+  done
+}
+
+function globalSetup() {
+  deleteNamespace
+  IOR_NAMESPACE="ior-$RANDOM"
+
+  echo "Deploying IOR in namespace ${IOR_NAMESPACE}"
+  sed -e "s|\${HUB}|${HUB}|g" \
+      -e "s|\${TAG}|${TAG}|g" \
+      -e "s|\${NAMESPACE}|${IOR_NAMESPACE}|g" \
+      ${ROOT_DIR}/container/pod.yaml | ${OC} create -f-
+
+  ${OC} label ns "${IOR_NAMESPACE}" "maistra.io/ior-test=true"
+  waitFor
+}
+
+function globalTearDown() {
+  echo "Removing IOR"
+  sed -e "s|\${HUB}|${HUB}|g" \
+      -e "s|\${TAG}|${TAG}|g" \
+      -e "s|\${NAMESPACE}|${IOR_NAMESPACE}|g" \
+      ${ROOT_DIR}/container/pod.yaml | ${OC} delete -f-
+
+  deleteNamespace
+}
+trap globalTearDown EXIT
 
 function setup() {
   NAMESPACE="ior-test-$RANDOM"
@@ -20,7 +76,6 @@ function setup() {
 function tearDown() {
   deleteNamespace "${NAMESPACE}"
 }
-trap tearDown EXIT
 
 function compareResult() {
   local wanted="${1}"
@@ -63,6 +118,7 @@ function checkResult() {
 }
 
 function spawnTests() {
+  echo "Starting tests"
   for file_in in ${TEST_DIR}/testdata/*.yaml; do
     setup
     ${OC} -n "${NAMESPACE}" apply -f "${file_in}"
@@ -71,4 +127,5 @@ function spawnTests() {
   done
 }
 
+globalSetup
 spawnTests
