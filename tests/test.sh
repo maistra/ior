@@ -17,7 +17,7 @@ function deleteNamespace() {
   ${OC} delete --ignore-not-found=true --now=true namespace "${1}"
 }
 
-function waitFor() {
+function waitForIORDeployment() {
   local maxAttempts="10"
   local ready
 
@@ -51,7 +51,7 @@ function globalSetup() {
       ${ROOT_DIR}/container/pod.yaml | ${OC} create -f-
 
   ${OC} label ns "${IOR_NAMESPACE}" "maistra.io/ior-test=true"
-  waitFor
+  waitForIORDeployment
 }
 
 function globalTearDown() {
@@ -92,29 +92,53 @@ function filterYaml() {
   echo "${1}" | jq -S -f ${TEST_DIR}/filters.jq
 }
 
+function waitForIORProcessing() {
+  local maxAttempts="5"
+  local isDeletion="${1:-false}"
+  local output
+  local op
+
+  if [ "${isDeletion}" = "true" ]; then
+    op="="
+  else
+    op="!="
+  fi
+
+  for i in $(seq 1 ${maxAttempts}); do
+    # Sleep at the beginning as it's unlikely it was processed so quickly
+    sleep 5
+
+    output=$(${OC} -n "${ISTIO_NS}" get routes -l maistra.io/gateway-namespace="${NAMESPACE}",maistra.io/generated-by=ior -o json)
+    qty=$(echo "${output}" | jq '.items | length')
+
+    if [ "${qty}" ${op} "0" ]; then
+
+      if [ "${isDeletion}" != "true" ]; then
+        echo "${output}"
+      fi
+
+      return 0
+    fi
+
+    if [ "${i}" == "${maxAttempts}" ]; then
+      echo "FAIL"
+      return 1
+    fi
+  done
+}
+
 function checkResult() {
   local file_in="${1}"
   local file_wanted="${file_in}.out"
   local bytes_wanted=$(filterYaml "$(cat ${file_wanted})")
-  local output
-  local qty
 
-  # Try 3 times with a delay of 5s between retries
-  for i in $(seq 1 3); do
-    output=$(${OC} -n "${ISTIO_NS}" get routes -l maistra.io/gateway-namespace="${NAMESPACE}",maistra.io/generated-by=ior -o json)
-    qty=$(echo "${output}" | jq '.items | length')
-    if [ "${qty}" != "0" ]; then
-      break
-    fi
-    if [ "${i}" == "3" ]; then
-      echo "FAIL"
-      return 1
-    fi
-    sleep 5
-  done
-
+  local output=$(waitForIORProcessing false)
   local got=$(filterYaml "${output}")
   compareResult "${bytes_wanted}" "${got}"
+}
+
+function checkResultDeletion() {
+  waitForIORProcessing true
 }
 
 function spawnTests() {
@@ -124,6 +148,7 @@ function spawnTests() {
     ${OC} -n "${NAMESPACE}" apply -f "${file_in}"
     checkResult "${file_in}"
     tearDown
+    checkResultDeletion
   done
 }
 
