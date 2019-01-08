@@ -21,9 +21,10 @@ push: image
 	docker push ${HUB}/ior:${TAG}
 
 pod: build image
-	kubectl -n ior delete --ignore-not-found=true --now=true ns ior && \
-	kubectl create ns ior && \
-	sed -e "s|\$${HUB}|${HUB}|g" -e "s|\$${TAG}|${TAG}|g" -e "s|\$${NAMESPACE}|${NAMESPACE}|g" container/pod.yaml | kubectl -n ior apply -f-
+	kubectl -n ior delete --ignore-not-found=true --now=true ns ${NAMESPACE} && \
+	sed -e "s|\$${HUB}|${HUB}|g" -e "s|\$${TAG}|${TAG}|g" -e "s|\$${NAMESPACE}|${NAMESPACE}|g" container/pod.yaml | kubectl -n ior create -f-
 
+cleanPod:
+	sed -e "s|\$${HUB}|${HUB}|g" -e "s|\$${TAG}|${TAG}|g" -e "s|\$${NAMESPACE}|${NAMESPACE}|g" container/pod.yaml | kubectl -n ior delete -f-
 test:
 	./tests/test.sh

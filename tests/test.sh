@@ -137,7 +137,27 @@ function checkResult() {
   compareResult "${bytes_wanted}" "${got}"
 }
 
-function checkResultDeletion() {
+function testCreate() {
+  local file_in="${1}"
+
+  ${OC} -n "${NAMESPACE}" apply -f "${file_in}"
+  checkResult "${file_in}"
+}
+
+function testEdit() {
+  local file_in="${1}"
+  local file_edited_in="${file_in}.edited"
+
+  if [ ! -f "${file_edited_in}" ]; then
+    return
+  fi
+
+  ${OC} -n "${NAMESPACE}" apply -f "${file_edited_in}"
+  checkResult "${file_edited_in}"
+}
+
+function testDelete() {
+  tearDown
   waitForIORProcessing true
 }
 
@@ -145,10 +165,9 @@ function spawnTests() {
   echo "Starting tests"
   for file_in in ${TEST_DIR}/testdata/*.yaml; do
     setup
-    ${OC} -n "${NAMESPACE}" apply -f "${file_in}"
-    checkResult "${file_in}"
-    tearDown
-    checkResultDeletion
+    testCreate "${file_in}"
+    testEdit "${file_in}"
+    testDelete
   done
 }
 
