@@ -24,44 +24,89 @@ function waitForIORDeployment() {
   echo -n "Waiting for IOR deployment to complete... "
 
   for i in $(seq 1 ${maxAttempts}); do
+    # Sleep at the beginning as it's unlikely it was processed so quickly
+    sleep 5
+
     ready=$(${OC} -n "${IOR_NAMESPACE}" get pod -l maistra=ior -o jsonpath='{.items..status.containerStatuses[0].ready}')
 
     if [ "${ready}" == "true" ]; then
       echo "OK"
-      break
+      return 0
     fi
-
-    if [ "${i}" == "${maxAttempts}" ]; then
-      echo "Error"
-      exit 1
-    fi
-
-    sleep 5
   done
+
+  echo "FAIL"
+  return 1
+}
+
+function timeSpent() {
+  local now=$(date +%s)
+  local seconds=$((now-START_TIME))
+
+  echo "(${seconds}.00s)"
+}
+
+function startTest() {
+  TESTNAME="${1:-${FUNCNAME[1]}}"
+  echo "=== RUN   ${TESTNAME}"
+  START_TIME=$(date +%s)
+}
+
+function passTest() {
+  echo "--- PASS: ${TESTNAME} $(timeSpent)"
+}
+
+function failTest() {
+  FAIL=1
+  echo "--- FAIL: ${TESTNAME} $(timeSpent)"
+}
+
+function run() {
+  $*
+
+  if [ $? -ne 0 ]; then
+    failTest
+    return 1
+  fi
+
+  return 0
 }
 
 function globalSetup() {
+  startTest
+
   deleteNamespace
   IOR_NAMESPACE="ior-$RANDOM"
 
   echo "Deploying IOR in namespace ${IOR_NAMESPACE}"
-  sed -e "s|\${HUB}|${HUB}|g" \
+  run sed -e "s|\${HUB}|${HUB}|g" \
       -e "s|\${TAG}|${TAG}|g" \
       -e "s|\${NAMESPACE}|${IOR_NAMESPACE}|g" \
-      ${ROOT_DIR}/container/pod.yaml | ${OC} create -f-
+      ${ROOT_DIR}/container/pod.yaml | ${OC} create -f- || return 1
 
-  ${OC} label ns "${IOR_NAMESPACE}" "maistra.io/ior-test=true"
-  waitForIORDeployment
+  run ${OC} label ns "${IOR_NAMESPACE}" "maistra.io/ior-test=true" || return 1
+  run waitForIORDeployment || return 1
+
+  passTest
 }
 
 function globalTearDown() {
+  if [ -n "${GLOBAL_TEAR_DOWN}" ]; then
+    return
+  fi
+  GLOBAL_TEAR_DOWN=1
+
+  startTest
+
   echo "Removing IOR"
-  sed -e "s|\${HUB}|${HUB}|g" \
+  run sed -e "s|\${HUB}|${HUB}|g" \
       -e "s|\${TAG}|${TAG}|g" \
       -e "s|\${NAMESPACE}|${IOR_NAMESPACE}|g" \
-      ${ROOT_DIR}/container/pod.yaml | ${OC} delete -f-
+      ${ROOT_DIR}/container/pod.yaml | ${OC} delete -f- || return 1
 
-  deleteNamespace
+  run deleteNamespace || return 1
+
+  passTest
 }
 trap globalTearDown EXIT
 
@@ -85,7 +130,13 @@ function compareResult() {
   #echo ${got} | jq -S . > /tmp/got.json
 
   #diff <(echo ${wanted} | jq -S .) <(echo ${got} | jq -S .)
-  jd -set <(echo ${wanted}) <(echo ${got})
+  local output=$(jd -set <(echo ${wanted}) <(echo ${got}))
+  if [ -z "${output}" ]; then
+    return
+  fi
+
+  echo "${output}"
+  return 1
 }
 
 function filterYaml() {
@@ -163,13 +214,30 @@ function testDelete() {
 
 function spawnTests() {
   echo "Starting tests"
+  local testName
+
   for file_in in ${TEST_DIR}/testdata/*.yaml; do
-    setup
-    testCreate "${file_in}"
-    testEdit "${file_in}"
-    testDelete
+    testName="Testing file: ${file_in}"
+    startTest "${testName}"
+
+    run setup || continue
+    run testCreate "${file_in}" || continue
+    run testEdit "${file_in}" || continue
+    run testDelete || continue
+
+    passTest
   done
+}
+
+function printResults() {
+  if [ -n "${FAIL}" ]; then
+    echo "FAIL"
+  else
+    echo "PASS"
+  fi
 }
 
 globalSetup
 spawnTests
+globalTearDown
+printResults
