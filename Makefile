@@ -14,6 +14,7 @@
 
 default: build
 
+GOBINARY ?= go
 EXE = ior
 HUB ?= docker.io/maistra
 TAG ?= latest
@@ -24,7 +25,7 @@ clean:
 
 GOSTATIC = -ldflags '-extldflags "-static"'
 build:
-	CGO_ENABLED=0 go build -o ./cmd/${EXE} ${GOSTATIC} ./cmd/...
+	CGO_ENABLED=0 ${GOBINARY} build -o ./cmd/${EXE} ${GOSTATIC} ./cmd/...
 
 image: build
 	cp ./cmd/${EXE} container/ && \
