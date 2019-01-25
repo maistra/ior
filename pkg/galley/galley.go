@@ -33,11 +33,13 @@ func ConnectToGalley(galleyAddr string) {
 	conn, err := grpc.DialContext(ctx, galleyAddr, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Unable to dial MCP Server %q: %v", galleyAddr, err)
+		return
 	}
 
 	r, err := route.New()
 	if err != nil {
 		log.Fatalf("Error creating a route object: %v", err)
+		return
 	}
 	r.DumpRoutes()
 	u := &update{Route: r}
