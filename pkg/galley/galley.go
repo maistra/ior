@@ -24,7 +24,10 @@ import (
 
 	"github.com/maistra/ior/pkg/route"
 	networking "istio.io/api/networking/v1alpha3"
+	_ "istio.io/istio/galley/pkg/metadata" // Import the resource package to pull in all proto types.
 	mcpclient "istio.io/istio/pkg/mcp/client"
+	"istio.io/istio/pkg/mcp/sink"
+	"istio.io/istio/pkg/mcp/testing/monitoring"
 )
 
 // ConnectToGalley ...
@@ -46,9 +49,13 @@ func ConnectToGalley(galleyAddr string) {
 
 	client := mcpapi.NewAggregatedMeshConfigServiceClient(conn)
 
-	supportedTypes := []string{"type.googleapis.com/istio.networking.v1alpha3.Gateway"}
+	supportedTypes := []string{"istio/networking/v1alpha3/gateways"}
 
-	mcpClient := mcpclient.New(client, supportedTypes, u, "ior", map[string]string{}, mcpclient.NewStatsContext("ior"))
+	mcpClient := mcpclient.New(client, &sink.Options{
+		Updater:           u,
+		CollectionOptions: sink.CollectionOptionsFromSlice(supportedTypes),
+		Reporter:          monitoring.NewInMemoryStatsContext(),
+	})
 
 	mcpClient.Run(ctx)
 }
@@ -57,13 +64,13 @@ type update struct {
 	*route.Route
 }
 
-func (u *update) Apply(change *mcpclient.Change) error {
+func (u *update) Apply(change *sink.Change) error {
 	log.Infof("Got info from MCP - %d object(s)\n", len(change.Objects))
 	gatewaysInfo := []route.GatewayInfo{}
 
 	for i, obj := range change.Objects {
 		log.Debugf("Object %d: Metadata = %v ", i+1, obj.Metadata)
-		gateway, ok := obj.Resource.(*networking.Gateway)
+		gateway, ok := obj.Body.(*networking.Gateway)
 		if ok {
 			log.Debugf("Object %d: Gateway = %v\n", i+1, gateway)
 			gatewaysInfo = append(gatewaysInfo, route.GatewayInfo{
