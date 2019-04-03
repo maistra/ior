@@ -139,20 +139,20 @@ func (r *Route) Sync(gatewaysInfo []GatewayInfo) error {
 }
 
 func (r *Route) editRoute(metadata *mcp.Metadata, host string) {
-	log.Debugf("Editing route for hostname %s\n", host)
+	log.Debugf("Editing route for hostname %s", host)
 	r.routes[host].valid = true
 }
 
 func (r *Route) deleteRoute(route *v1.Route) {
 	var immediate int64
 	host := getHost(*route)
-	log.Debugf("Deleting route %s (hostname: %s)\n", route.ObjectMeta.Name, host)
+	log.Debugf("Deleting route %s (hostname: %s)", route.ObjectMeta.Name, host)
 	err := r.client.Routes(istioNamespace).Delete(route.ObjectMeta.Name, &metav1.DeleteOptions{GracePeriodSeconds: &immediate})
 	delete(r.routes, getHost(*route))
 	if err == nil {
-		log.Infof("Deleted route %s/%s (hostname: %s)\n", route.ObjectMeta.Namespace, route.ObjectMeta.Name, host)
+		log.Infof("Deleted route %s/%s (hostname: %s)", route.ObjectMeta.Namespace, route.ObjectMeta.Name, host)
 	} else {
-		log.Errorf("Error deleting route %s: %s\n", route.ObjectMeta.Name, err)
+		log.Errorf("Error deleting route %s: %s", route.ObjectMeta.Name, err)
 	}
 }
 
@@ -160,10 +160,10 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 	var wildcard = v1.WildcardPolicyNone
 	actualHost := originalHost
 
-	log.Debugf("Creating route for hostname %s\n", originalHost)
+	log.Debugf("Creating route for hostname %s", originalHost)
 
 	if originalHost == "*" {
-		log.Infof("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create one instead.\n", metadata.Name)
+		log.Infof("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create one instead.", metadata.Name)
 		actualHost = ""
 	} else if strings.HasPrefix(originalHost, "*.") {
 		// Wildcards are not enabled by default in OCP 3.x.
@@ -211,14 +211,14 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 	})
 
 	if err != nil {
-		log.Errorf("Error creating a route for host %s: %s\n", originalHost, err)
+		log.Errorf("Error creating a route for host %s: %s", originalHost, err)
 	}
 
 	if actualHost == "" {
-		log.Infof("Generated hostname by OpenShift: %s\n", nr.Spec.Host)
+		log.Infof("Generated hostname by OpenShift: %s", nr.Spec.Host)
 	}
 
-	log.Infof("Created route %s/%s for hostname %s\n", nr.ObjectMeta.Namespace, nr.ObjectMeta.Name, originalHost)
+	log.Infof("Created route %s/%s for hostname %s", nr.ObjectMeta.Namespace, nr.ObjectMeta.Name, originalHost)
 
 	r.routes[originalHost] = &syncedRoute{
 		route: nr,
