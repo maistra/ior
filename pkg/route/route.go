@@ -26,6 +26,7 @@ import (
 	"istio.io/istio/pkg/kube"
 	"istio.io/istio/pkg/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -172,8 +173,10 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 	}
 
 	var tlsConfig *v1.TLSConfig
+	targetPort := "http2"
 	if tls {
 		tlsConfig = &v1.TLSConfig{Termination: v1.TLSTerminationPassthrough}
+		targetPort = "https"
 	}
 
 	namespace, gatewayName := util.ExtractNameNamespace(metadata.Name)
@@ -193,6 +196,12 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 		},
 		Spec: v1.RouteSpec{
 			Host: actualHost,
+			Port: &v1.RoutePort{
+				TargetPort: intstr.IntOrString{
+					Type:   intstr.String,
+					StrVal: targetPort,
+				},
+			},
 			To: v1.RouteTargetReference{
 				Name: ingressService,
 			},
