@@ -54,7 +54,7 @@ spec:
       serviceAccountName: ior
       containers:
       - image: ${HUB}/ior:${TAG}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         name: ior
         args:
           - --log_output_level=default:debug
