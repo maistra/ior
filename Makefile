@@ -20,12 +20,40 @@ HUB ?= docker.io/maistra
 TAG ?= latest
 NAMESPACE ?= ior
 
+LD_EXTRAFLAGS =
+
+VERSION ?= development
+LD_EXTRAFLAGS += -X github.com/maistra/ior/pkg/version.buildVersion=${VERSION}
+
+GITREVISION ?= $(shell git rev-parse --verify HEAD 2> /dev/null)
+ifeq ($(GITREVISION),)
+  GITREVISION = unknown
+endif
+LD_EXTRAFLAGS += -X github.com/maistra/ior/pkg/version.buildGitRevision=${GITREVISION}
+
+
+GITSTATUS ?= $(shell git diff-index --quiet HEAD --  2> /dev/null; echo $$?)
+ifeq ($(GITSTATUS),0)
+  GITSTATUS = Clean
+else ifeq ($(GITSTATUS),1)
+  GITSTATUS = Modified
+else
+  GITSTATUS = unknown
+endif
+LD_EXTRAFLAGS += -X github.com/maistra/ior/pkg/version.buildStatus=${GITSTATUS}
+
+GITTAG ?= $(shell git describe 2> /dev/null)
+ifeq ($(GITTAG),)
+  GITTAG = unknown
+endif
+LD_EXTRAFLAGS += -X github.com/maistra/ior/pkg/version.buildTag=${GITTAG}
+
 clean:
 	rm -f ./cmd/${EXE} && rm -f container/${EXE}
 
-GOSTATIC = -ldflags '-extldflags "-static"'
+LDFLAGS = '-extldflags -static ${LD_EXTRAFLAGS}'
 build:
-	CGO_ENABLED=0 ${GOBINARY} build -o ./cmd/${EXE} ${GOSTATIC} ./cmd/...
+	CGO_ENABLED=0 ${GOBINARY} build -o ./cmd/${EXE} -ldflags ${LDFLAGS} ./cmd/...
 
 image: build
 	cp ./cmd/${EXE} container/ && \

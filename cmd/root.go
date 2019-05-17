@@ -18,6 +18,7 @@ import (
 	"flag"
 
 	"github.com/maistra/ior/pkg/galley"
+	"github.com/maistra/ior/pkg/version"
 	"github.com/spf13/cobra"
 	"istio.io/istio/pkg/log"
 )
@@ -34,6 +35,7 @@ func getRootCmd(args []string) *cobra.Command {
 		Short: "Connects to Galley and manages OpenShift Routes based on Istio Gateways",
 		Run: func(cmd *cobra.Command, args []string) {
 			log.Configure(loggingOptions)
+			log.Infof("Starting IOR %s", version.Info)
 			galley.ConnectToGalley(galleyAddr)
 		},
 	}
@@ -45,5 +47,6 @@ func getRootCmd(args []string) *cobra.Command {
 
 	loggingOptions.AttachCobraFlags(rootCmd)
 
+	rootCmd.AddCommand(version.GetVersionCmd())
 	return rootCmd
 }

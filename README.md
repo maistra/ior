@@ -32,3 +32,18 @@ bookinfo-gateway-n6lq7   www.bookinfo.com                 istio-ingressgateway  
 ```
 
 `ior` keeps Routes in sync with Gateways, meaning if you change or delete a Gateway, the Routes will be changed or deleted accordingly.
+
+## Development
+
+### Building from source
+
+Just clone the repository and run make:
+```sh
+make
+```
+
+Important Makefile variables:
+- `VERSION`: Controls the program version (`ior version` command). If not specified, the default value of `"development"` is assigned. Example of usage:
+```sh
+make VERSION=1.0.0
+```
