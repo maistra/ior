@@ -53,7 +53,7 @@ clean:
 
 LDFLAGS = '-extldflags -static ${LD_EXTRAFLAGS}'
 build:
-	CGO_ENABLED=0 ${GOBINARY} build -o ./cmd/${EXE} -ldflags ${LDFLAGS} ./cmd/...
+	CGO_ENABLED=0 ${GOBINARY} build -mod=vendor -o ./cmd/${EXE} -ldflags ${LDFLAGS} ./cmd/...
 
 image: build
 	cp ./cmd/${EXE} container/ && \
