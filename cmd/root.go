@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 
+	"github.com/maistra/ior/pkg/bootstrap"
 	"github.com/maistra/ior/pkg/galley"
 	"github.com/maistra/ior/pkg/version"
 	"github.com/spf13/cobra"
@@ -25,7 +26,7 @@ import (
 
 var (
 	loggingOptions = log.DefaultOptions()
-	galleyAddr     = "istio-galley.istio-system:9901"
+	cliArgs        = bootstrap.DefaultArgs()
 )
 
 func getRootCmd(args []string) *cobra.Command {
@@ -33,17 +34,21 @@ func getRootCmd(args []string) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "server",
 		Short: "Connects to Galley and manages OpenShift Routes based on Istio Gateways",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			log.Configure(loggingOptions)
+
 			log.Infof("Starting IOR %s", version.Info)
-			galley.ConnectToGalley(galleyAddr)
+
+			return galley.ConnectToGalley(cliArgs)
 		},
 	}
 
 	rootCmd.SetArgs(args)
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
-	rootCmd.PersistentFlags().StringVarP(&galleyAddr, "mcp-address", "", galleyAddr,
+	rootCmd.PersistentFlags().StringVarP(&cliArgs.McpAddr, "mcp-address", "", cliArgs.McpAddr,
 		"Galley's MCP server address")
+	rootCmd.PersistentFlags().StringVarP(&cliArgs.Namespace, "namespace", "n", cliArgs.Namespace,
+		"Namespace where the control plane resides. If not set, uses ${POD_NAMESPACE} environment variable")
 
 	loggingOptions.AttachCobraFlags(rootCmd)
 

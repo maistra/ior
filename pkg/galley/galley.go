@@ -16,12 +16,14 @@ package galley
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/grpc"
 	mcpapi "istio.io/api/mcp/v1alpha1"
 
 	"istio.io/pkg/log"
 
+	"github.com/maistra/ior/pkg/bootstrap"
 	"github.com/maistra/ior/pkg/route"
 	networking "istio.io/api/networking/v1alpha3"
 	_ "istio.io/istio/galley/pkg/metadata" // Import the resource package to pull in all proto types.
@@ -30,18 +32,22 @@ import (
 )
 
 // ConnectToGalley ...
-func ConnectToGalley(galleyAddr string) {
-	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, galleyAddr, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Unable to dial MCP Server %q: %v", galleyAddr, err)
-		return
+func ConnectToGalley(args *bootstrap.Args) error {
+	if err := args.Validate(); err != nil {
+		return fmt.Errorf("error validating arguments: %v", err)
 	}
 
-	r, err := route.New()
+	log.Infof("Started IOR with\n%v", args)
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, args.McpAddr, grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("Error creating a route object: %v", err)
-		return
+		return fmt.Errorf("Unable to dial MCP Server %q: %v", args.McpAddr, err)
+	}
+
+	r, err := route.New(args)
+	if err != nil {
+		return fmt.Errorf("Error creating a route object: %v", err)
 	}
 	r.DumpRoutes()
 	u := &update{Route: r}
@@ -56,6 +62,8 @@ func ConnectToGalley(galleyAddr string) {
 	cl := mcpapi.NewResourceSourceClient(conn)
 	c := sink.NewClient(cl, options)
 	c.Run(ctx)
+
+	return nil
 }
 
 type update struct {

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/maistra/ior/pkg/bootstrap"
 	"github.com/maistra/ior/pkg/util"
 	v1 "github.com/openshift/api/route/v1"
 	routev1 "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
@@ -31,7 +32,6 @@ import (
 
 const (
 	maistraPrefix          = "maistra.io/"
-	istioNamespace         = "istio-system"
 	ingressService         = "istio-ingressgateway"
 	generatedByLabel       = maistraPrefix + "generated-by"
 	generatedByValue       = "ior"
@@ -53,13 +53,14 @@ type syncedRoute struct {
 
 // Route ...
 type Route struct {
+	args   *bootstrap.Args
 	client *routev1.RouteV1Client
 	routes map[string]*syncedRoute
 }
 
 // New ...
-func New() (*Route, error) {
-	r := &Route{}
+func New(args *bootstrap.Args) (*Route, error) {
+	r := &Route{args: args}
 
 	err := r.initClient()
 	if err != nil {
@@ -82,11 +83,11 @@ func getHost(route v1.Route) string {
 }
 
 func (r *Route) initRoutes() error {
-	routes, err := r.client.Routes(istioNamespace).List(metav1.ListOptions{
+	routes, err := r.client.Routes(r.args.Namespace).List(metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", generatedByLabel, generatedByValue),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting routes: %v", err)
 	}
 
 	r.routes = make(map[string]*syncedRoute, len(routes.Items))
@@ -147,7 +148,7 @@ func (r *Route) deleteRoute(route *v1.Route) {
 	var immediate int64
 	host := getHost(*route)
 	log.Debugf("Deleting route %s (hostname: %s)", route.ObjectMeta.Name, host)
-	err := r.client.Routes(istioNamespace).Delete(route.ObjectMeta.Name, &metav1.DeleteOptions{GracePeriodSeconds: &immediate})
+	err := r.client.Routes(r.args.Namespace).Delete(route.ObjectMeta.Name, &metav1.DeleteOptions{GracePeriodSeconds: &immediate})
 	delete(r.routes, getHost(*route))
 	if err == nil {
 		log.Infof("Deleted route %s/%s (hostname: %s)", route.ObjectMeta.Namespace, route.ObjectMeta.Name, host)
@@ -182,7 +183,7 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 	namespace, gatewayName := util.ExtractNameNamespace(metadata.Name)
 
 	// FIXME: Can we create the route in the same namespace as the Gateway pointing to a service in the istio-system namespace?
-	nr, err := r.client.Routes(istioNamespace).Create(&v1.Route{
+	nr, err := r.client.Routes(r.args.Namespace).Create(&v1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", gatewayName),
 			Labels: map[string]string{
@@ -229,12 +230,12 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 func (r *Route) initClient() error {
 	config, err := kube.BuildClientConfig("", "")
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating a Kubernetes client: %v", err)
 	}
 
 	client, err := routev1.NewForConfig(config)
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating an OpenShift route client: %v", err)
 	}
 
 	r.client = client
