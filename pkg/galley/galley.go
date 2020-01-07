@@ -20,12 +20,11 @@ import (
 	"google.golang.org/grpc"
 	mcpapi "istio.io/api/mcp/v1alpha1"
 
-	"istio.io/istio/pkg/log"
+	"istio.io/pkg/log"
 
 	"github.com/maistra/ior/pkg/route"
 	networking "istio.io/api/networking/v1alpha3"
 	_ "istio.io/istio/galley/pkg/metadata" // Import the resource package to pull in all proto types.
-	mcpclient "istio.io/istio/pkg/mcp/client"
 	"istio.io/istio/pkg/mcp/sink"
 	"istio.io/istio/pkg/mcp/testing/monitoring"
 )
@@ -47,17 +46,16 @@ func ConnectToGalley(galleyAddr string) {
 	r.DumpRoutes()
 	u := &update{Route: r}
 
-	client := mcpapi.NewAggregatedMeshConfigServiceClient(conn)
-
 	supportedTypes := []string{"istio/networking/v1alpha3/gateways"}
-
-	mcpClient := mcpclient.New(client, &sink.Options{
+	options := &sink.Options{
 		Updater:           u,
 		CollectionOptions: sink.CollectionOptionsFromSlice(supportedTypes),
 		Reporter:          monitoring.NewInMemoryStatsContext(),
-	})
+	}
 
-	mcpClient.Run(ctx)
+	cl := mcpapi.NewResourceSourceClient(conn)
+	c := sink.NewClient(cl, options)
+	c.Run(ctx)
 }
 
 type update struct {

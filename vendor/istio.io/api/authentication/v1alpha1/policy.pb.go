@@ -9,7 +9,9 @@ import (
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
+	_ "istio.io/gogo-genproto/googleapis/google/api"
 	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -21,7 +23,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // Associates authentication with request principal.
 type PrincipalBinding int32
@@ -106,7 +108,7 @@ func (m *StringMatch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) 
 		return xxx_messageInfo_StringMatch.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -184,100 +186,14 @@ func (m *StringMatch) GetRegex() string {
 	return ""
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*StringMatch) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _StringMatch_OneofMarshaler, _StringMatch_OneofUnmarshaler, _StringMatch_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*StringMatch) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*StringMatch_Exact)(nil),
 		(*StringMatch_Prefix)(nil),
 		(*StringMatch_Suffix)(nil),
 		(*StringMatch_Regex)(nil),
 	}
-}
-
-func _StringMatch_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*StringMatch)
-	// match_type
-	switch x := m.MatchType.(type) {
-	case *StringMatch_Exact:
-		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.Exact)
-	case *StringMatch_Prefix:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.Prefix)
-	case *StringMatch_Suffix:
-		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.Suffix)
-	case *StringMatch_Regex:
-		_ = b.EncodeVarint(4<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.Regex)
-	case nil:
-	default:
-		return fmt.Errorf("StringMatch.MatchType has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _StringMatch_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*StringMatch)
-	switch tag {
-	case 1: // match_type.exact
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.MatchType = &StringMatch_Exact{x}
-		return true, err
-	case 2: // match_type.prefix
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.MatchType = &StringMatch_Prefix{x}
-		return true, err
-	case 3: // match_type.suffix
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.MatchType = &StringMatch_Suffix{x}
-		return true, err
-	case 4: // match_type.regex
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.MatchType = &StringMatch_Regex{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _StringMatch_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*StringMatch)
-	// match_type
-	switch x := m.MatchType.(type) {
-	case *StringMatch_Exact:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.Exact)))
-		n += len(x.Exact)
-	case *StringMatch_Prefix:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.Prefix)))
-		n += len(x.Prefix)
-	case *StringMatch_Suffix:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.Suffix)))
-		n += len(x.Suffix)
-	case *StringMatch_Regex:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.Regex)))
-		n += len(x.Regex)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 // TLS authentication params.
@@ -310,7 +226,7 @@ func (m *MutualTls) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_MutualTls.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -344,9 +260,8 @@ func (m *MutualTls) GetMode() MutualTls_Mode {
 }
 
 // JSON Web Token (JWT) token format for authentication as defined by
-// [RFC 7519](https://tools.ietf.org/html/rfc7519). See [OAuth
-// 2.0](https://tools.ietf.org/html/rfc6749) and [OIDC
-// 1.0](http://openid.net/connect) for how this is used in the whole
+// [RFC 7519](https://tools.ietf.org/html/rfc7519). See [OAuth 2.0](https://tools.ietf.org/html/rfc6749) and
+// [OIDC 1.0](http://openid.net/connect) for how this is used in the whole
 // authentication flow.
 //
 // For example:
@@ -367,9 +282,9 @@ func (m *MutualTls) GetMode() MutualTls_Mode {
 //
 // ```yaml
 // issuer: https://example.com
-// jwks_uri: https://example.com/.well-known/jwks.json
-// trigger_rules:
-// - excluded_paths:
+// jwksUri: https://example.com/.well-known/jwks.json
+// triggerRules:
+// - excludedPaths:
 //   - exact: /health_check
 //   - prefix: /status/
 // ```
@@ -379,9 +294,9 @@ func (m *MutualTls) GetMode() MutualTls_Mode {
 //
 // ```yaml
 // issuer: https://example.com
-// jwks_uri: https://example.com/.well-known/jwks.json
-// trigger_rules:
-// - included_paths:
+// jwksUri: https://example.com/.well-known/jwks.json
+// triggerRules:
+// - includedPaths:
 //   - prefix: /admin
 // ```
 //
@@ -391,11 +306,11 @@ func (m *MutualTls) GetMode() MutualTls_Mode {
 //
 // ```yaml
 // issuer: https://example.com
-// jwks_uri: https://example.com/.well-known/jwks.json
-// trigger_rules:
-// - excluded_paths:
+// jwksUri: https://example.com/.well-known/jwks.json
+// triggerRules:
+// - excludedPaths:
 //   - exact: /status/version
-//   included_paths:
+//   includedPaths:
 //   - prefix: /status/
 // ```
 type Jwt struct {
@@ -422,8 +337,7 @@ type Jwt struct {
 	// ```
 	Audiences []string `protobuf:"bytes,2,rep,name=audiences,proto3" json:"audiences,omitempty"`
 	// URL of the provider's public key set to validate signature of the
-	// JWT. See [OpenID
-	// Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
+	// JWT. See [OpenID Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
 	//
 	// Optional if the key set document can either (a) be retrieved from
 	// [OpenID
@@ -432,12 +346,19 @@ type Jwt struct {
 	// Google service account).
 	//
 	// Example: `https://www.googleapis.com/oauth2/v1/certs`
+	//
+	// Note: Only one of jwks_uri and jwks should be used.
 	JwksUri string `protobuf:"bytes,3,opt,name=jwks_uri,json=jwksUri,proto3" json:"jwks_uri,omitempty"`
+	// JSON Web Key Set of public keys to validate signature of the JWT.
+	// See https://auth0.com/docs/jwks.
+	//
+	// Note: Only one of jwks_uri and jwks should be used.
+	Jwks string `protobuf:"bytes,10,opt,name=jwks,proto3" json:"jwks,omitempty"`
 	// JWT is sent in a request header. `header` represents the
 	// header name.
 	//
 	// For example, if `header=x-goog-iap-jwt-assertion`, the header
-	// format will be x-goog-iap-jwt-assertion: <JWT>.
+	// format will be `x-goog-iap-jwt-assertion: <JWT>`.
 	JwtHeaders []string `protobuf:"bytes,6,rep,name=jwt_headers,json=jwtHeaders,proto3" json:"jwt_headers,omitempty"`
 	// JWT is sent in a query parameter. `query` represents the
 	// query parameter name.
@@ -469,7 +390,7 @@ func (m *Jwt) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Jwt.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -505,6 +426,13 @@ func (m *Jwt) GetAudiences() []string {
 func (m *Jwt) GetJwksUri() string {
 	if m != nil {
 		return m.JwksUri
+	}
+	return ""
+}
+
+func (m *Jwt) GetJwks() string {
+	if m != nil {
+		return m.Jwks
 	}
 	return ""
 }
@@ -559,7 +487,7 @@ func (m *Jwt_TriggerRule) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return xxx_messageInfo_Jwt_TriggerRule.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -621,7 +549,7 @@ func (m *PeerAuthenticationMethod) XXX_Marshal(b []byte, deterministic bool) ([]
 		return xxx_messageInfo_PeerAuthenticationMethod.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -677,78 +605,12 @@ func (m *PeerAuthenticationMethod) GetJwt() *Jwt {
 	return nil
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*PeerAuthenticationMethod) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _PeerAuthenticationMethod_OneofMarshaler, _PeerAuthenticationMethod_OneofUnmarshaler, _PeerAuthenticationMethod_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*PeerAuthenticationMethod) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*PeerAuthenticationMethod_Mtls)(nil),
 		(*PeerAuthenticationMethod_Jwt)(nil),
 	}
-}
-
-func _PeerAuthenticationMethod_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*PeerAuthenticationMethod)
-	// params
-	switch x := m.Params.(type) {
-	case *PeerAuthenticationMethod_Mtls:
-		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Mtls); err != nil {
-			return err
-		}
-	case *PeerAuthenticationMethod_Jwt:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Jwt); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("PeerAuthenticationMethod.Params has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _PeerAuthenticationMethod_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*PeerAuthenticationMethod)
-	switch tag {
-	case 1: // params.mtls
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(MutualTls)
-		err := b.DecodeMessage(msg)
-		m.Params = &PeerAuthenticationMethod_Mtls{msg}
-		return true, err
-	case 2: // params.jwt
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Jwt)
-		err := b.DecodeMessage(msg)
-		m.Params = &PeerAuthenticationMethod_Jwt{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _PeerAuthenticationMethod_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*PeerAuthenticationMethod)
-	// params
-	switch x := m.Params.(type) {
-	case *PeerAuthenticationMethod_Mtls:
-		s := proto.Size(x.Mtls)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *PeerAuthenticationMethod_Jwt:
-		s := proto.Size(x.Jwt)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 // OriginAuthenticationMethod defines authentication method/params for origin
@@ -776,7 +638,7 @@ func (m *OriginAuthenticationMethod) XXX_Marshal(b []byte, deterministic bool) (
 		return xxx_messageInfo_OriginAuthenticationMethod.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -838,7 +700,7 @@ func (m *OriginAuthenticationMethod) GetJwt() *Jwt {
 // apiVersion: authentication.istio.io/v1alpha1
 // kind: Policy
 // metadata:
-//   name: productpage_mTLS_disable
+//   name: productpage-mTLS-disable
 //   namespace: frod
 // spec:
 //   targets:
@@ -851,10 +713,10 @@ func (m *OriginAuthenticationMethod) GetJwt() *Jwt {
 // apiVersion: authentication.istio.io/v1alpha1
 // kind: Policy
 // metadata:
-//   name: productpage_mTLS_with_JWT
+//   name: productpage-mTLS-with-JWT
 //   namespace: frod
 // spec:
-//   target:
+//   targets:
 //   - name: productpage
 //     ports:
 //     - number: 9000
@@ -866,13 +728,23 @@ func (m *OriginAuthenticationMethod) GetJwt() *Jwt {
 //       audiences:
 //       - "productpage"
 //       jwksUri: "https://www.googleapis.com/oauth2/v1/certs"
-//       jwt_headers:
+//       jwtHeaders:
 //       - "x-goog-iap-jwt-assertion"
-//       trigger_rules:
-//       - excluded_paths:
+//       triggerRules:
+//       - excludedPaths:
 //         - exact: /health_check
 //   principalBinding: USE_ORIGIN
 // ```
+//
+// <!-- go code generation tags
+// +kubetype-gen
+// +kubetype-gen:groupVersion=authentication.istio.io/v1alpha1
+// +kubetype-gen:kubeType=Policy
+// +kubetype-gen:kubeType=MeshPolicy
+// +kubetype-gen:MeshPolicy:tag=genclient:nonNamespaced
+// +genclient
+// +k8s:deepcopy-gen=true
+// -->
 type Policy struct {
 	// List rules to select workloads that the policy should be applied on.
 	// If empty, policy will be used on all workloads in the same namespace.
@@ -930,7 +802,7 @@ func (m *Policy) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Policy.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -994,15 +866,15 @@ func (m *Policy) GetPrincipalBinding() PrincipalBinding {
 // TargetSelector defines a matching rule to a workload. A workload is selected
 // if it is associated with the service name and service port(s) specified in the selector rule.
 type TargetSelector struct {
-	// REQUIRED. The name must be a short name from the service registry. The
+	// The name must be a short name from the service registry. The
 	// fully qualified domain name will be resolved in a platform specific manner.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// $hide_from_docs
 	// $not-implemented-hide
 	// Select workload by labels.
-	// Once implemented, this is a prefer way over using service name.
+	// Once implemented, this is the preferred way rather than using the service name.
 	Labels map[string]string `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	// Specifies the ports. Note that this is the port(s) exposed by the service, not workload ports.
+	// Specifies the ports. Note that this is the port(s) exposed by the service, not workload instance ports.
 	// For example, if a service is defined as below, then `8000` should be used, not `9000`.
 	// ```yaml
 	// kind: Service
@@ -1037,7 +909,7 @@ func (m *TargetSelector) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return xxx_messageInfo_TargetSelector.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1104,7 +976,7 @@ func (m *PortSelector) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return xxx_messageInfo_PortSelector.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -1160,69 +1032,12 @@ func (m *PortSelector) GetName() string {
 	return ""
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*PortSelector) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _PortSelector_OneofMarshaler, _PortSelector_OneofUnmarshaler, _PortSelector_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*PortSelector) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*PortSelector_Number)(nil),
 		(*PortSelector_Name)(nil),
 	}
-}
-
-func _PortSelector_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*PortSelector)
-	// port
-	switch x := m.Port.(type) {
-	case *PortSelector_Number:
-		_ = b.EncodeVarint(1<<3 | proto.WireVarint)
-		_ = b.EncodeVarint(uint64(x.Number))
-	case *PortSelector_Name:
-		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.Name)
-	case nil:
-	default:
-		return fmt.Errorf("PortSelector.Port has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _PortSelector_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*PortSelector)
-	switch tag {
-	case 1: // port.number
-		if wire != proto.WireVarint {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeVarint()
-		m.Port = &PortSelector_Number{uint32(x)}
-		return true, err
-	case 2: // port.name
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Port = &PortSelector_Name{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _PortSelector_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*PortSelector)
-	// port
-	switch x := m.Port.(type) {
-	case *PortSelector_Number:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(x.Number))
-	case *PortSelector_Name:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.Name)))
-		n += len(x.Name)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 func init() {
@@ -1245,66 +1060,68 @@ func init() {
 }
 
 var fileDescriptor_30ec3f7cef93301a = []byte{
-	// 838 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xc1, 0x6e, 0x23, 0x35,
-	0x18, 0xee, 0x74, 0x92, 0x69, 0xf2, 0xa7, 0x8d, 0x82, 0xb5, 0x5a, 0x0d, 0x85, 0x2d, 0xd5, 0x68,
-	0x0f, 0xd1, 0x02, 0x13, 0x36, 0x20, 0x60, 0x39, 0x20, 0x35, 0x28, 0x6c, 0xb3, 0x22, 0x34, 0xeb,
-	0x64, 0x39, 0x20, 0xa4, 0x91, 0x9b, 0x78, 0x13, 0x67, 0x9d, 0x99, 0x91, 0xed, 0xd9, 0x34, 0x27,
-	0x1e, 0x81, 0x17, 0xe0, 0xc2, 0x99, 0x23, 0x2f, 0xc1, 0x91, 0x47, 0x40, 0x7d, 0x07, 0xee, 0xc8,
-	0xf6, 0x0c, 0x4d, 0x56, 0x94, 0x29, 0x37, 0x7f, 0xff, 0xef, 0xef, 0xf3, 0xef, 0xcf, 0xbf, 0x6d,
-	0x78, 0x48, 0x32, 0xb5, 0xa0, 0xb1, 0x62, 0x53, 0xa2, 0x58, 0x12, 0x77, 0x5e, 0x3f, 0x26, 0x3c,
-	0x5d, 0x90, 0xc7, 0x9d, 0x34, 0xe1, 0x6c, 0xba, 0x09, 0x53, 0x91, 0xa8, 0x04, 0x3d, 0x60, 0x52,
-	0xb1, 0x24, 0xdc, 0x9d, 0x1b, 0x16, 0x73, 0x83, 0x1f, 0xa1, 0x31, 0x56, 0x82, 0xc5, 0xf3, 0x21,
-	0x51, 0xd3, 0x05, 0xba, 0x0f, 0x55, 0x7a, 0x45, 0xa6, 0xca, 0x77, 0x4e, 0x9d, 0x76, 0xfd, 0x7c,
-	0x0f, 0x5b, 0x88, 0x7c, 0xf0, 0x52, 0x41, 0x5f, 0xb2, 0x2b, 0x7f, 0x3f, 0x4f, 0xe4, 0x58, 0x67,
-	0x64, 0xf6, 0x52, 0x67, 0xdc, 0x22, 0x63, 0xb1, 0xd6, 0x12, 0x74, 0x4e, 0xaf, 0xfc, 0x4a, 0xa1,
-	0x65, 0x60, 0xef, 0x10, 0x60, 0xa5, 0x17, 0x8b, 0xd4, 0x26, 0xa5, 0xc1, 0x4f, 0x0e, 0xd4, 0x87,
-	0x99, 0xca, 0x08, 0x9f, 0x70, 0x89, 0xde, 0x81, 0x3a, 0xe1, 0x3c, 0x59, 0x47, 0x8a, 0x4b, 0x53,
-	0x43, 0x0d, 0xd7, 0x4c, 0x40, 0x27, 0xcf, 0xa0, 0xb2, 0x4a, 0x66, 0xd4, 0x94, 0xd0, 0xec, 0x7e,
-	0x18, 0xfe, 0xe7, 0xce, 0xc2, 0x7f, 0x44, 0xc3, 0x61, 0x32, 0xa3, 0xd8, 0x50, 0x83, 0x00, 0x2a,
-	0x1a, 0x21, 0x00, 0x6f, 0x3c, 0xc1, 0x83, 0xaf, 0x26, 0xad, 0x3d, 0xd4, 0x04, 0x18, 0xf5, 0xf1,
-	0x70, 0x30, 0x1e, 0x0f, 0xbe, 0xeb, 0xb7, 0x9c, 0xe0, 0x17, 0x17, 0xdc, 0x67, 0x6b, 0x85, 0xee,
-	0x83, 0xc7, 0xa4, 0xcc, 0xa8, 0xb0, 0x66, 0xe0, 0x1c, 0xa1, 0x77, 0xa1, 0x4e, 0xb2, 0x19, 0xa3,
-	0xf1, 0x94, 0x4a, 0x7f, 0xff, 0xd4, 0x6d, 0xd7, 0xf1, 0x4d, 0x00, 0xbd, 0x0d, 0xb5, 0xe5, 0xfa,
-	0x95, 0x8c, 0x32, 0xc1, 0xac, 0x23, 0xf8, 0x40, 0xe3, 0x17, 0x82, 0xa1, 0xf7, 0xa0, 0xb1, 0x5c,
-	0xab, 0x68, 0x41, 0xc9, 0x8c, 0x0a, 0xe9, 0x7b, 0x86, 0x0a, 0xcb, 0xb5, 0x3a, 0xb7, 0x11, 0xf4,
-	0x00, 0x34, 0x8a, 0x52, 0x22, 0xc8, 0x4a, 0xfa, 0x07, 0x56, 0x7a, 0xb9, 0x56, 0x23, 0x13, 0x40,
-	0x63, 0x38, 0x52, 0x82, 0xcd, 0xe7, 0x54, 0x44, 0x22, 0xe3, 0x54, 0xfa, 0xf5, 0x53, 0xb7, 0xdd,
-	0xe8, 0x86, 0x25, 0x46, 0x3c, 0x5b, 0xab, 0x70, 0x62, 0x79, 0x38, 0xe3, 0x14, 0x1f, 0xaa, 0x1b,
-	0x20, 0x8f, 0x7f, 0x73, 0xa0, 0xb1, 0x95, 0x45, 0xcf, 0xa1, 0x49, 0xaf, 0xa6, 0x3c, 0x9b, 0xd1,
-	0x59, 0x94, 0x12, 0xb5, 0xd0, 0xc7, 0xa0, 0x57, 0x79, 0x54, 0xb2, 0xca, 0x56, 0x17, 0xe1, 0xa3,
-	0x42, 0x61, 0xa4, 0x05, 0xb4, 0x24, 0x8b, 0x77, 0x24, 0xf7, 0xff, 0xbf, 0x64, 0xa1, 0x60, 0x24,
-	0x83, 0x9f, 0x1d, 0xf0, 0x47, 0x94, 0x8a, 0xb3, 0x1d, 0xea, 0x90, 0xaa, 0x45, 0x32, 0x43, 0x5f,
-	0x42, 0x65, 0x55, 0xf4, 0x4f, 0xa3, 0xdb, 0xbe, 0x6b, 0x9f, 0x9c, 0xef, 0x61, 0xc3, 0x43, 0x9f,
-	0x82, 0xbb, 0x5c, 0x2b, 0xd3, 0x66, 0x8d, 0x6e, 0x50, 0xee, 0xee, 0xf9, 0x1e, 0xd6, 0x84, 0x5e,
-	0x0d, 0x3c, 0x7b, 0x74, 0x01, 0x86, 0xe3, 0x0b, 0xc1, 0xe6, 0x2c, 0xfe, 0xd7, 0xfa, 0x3e, 0xb1,
-	0xfa, 0xce, 0x5d, 0xf5, 0x8d, 0x7a, 0xf0, 0xab, 0x0b, 0xde, 0xc8, 0xdc, 0x6c, 0xf4, 0x14, 0x0e,
-	0x14, 0x11, 0x73, 0xaa, 0x8a, 0xc3, 0x29, 0xbb, 0x0b, 0x13, 0x33, 0x7b, 0x4c, 0x39, 0x9d, 0xaa,
-	0x44, 0xe0, 0x82, 0x8d, 0x86, 0x50, 0x4d, 0xa9, 0xee, 0x45, 0x7b, 0x20, 0x9f, 0x95, 0xc8, 0xdc,
-	0xe6, 0x38, 0xb6, 0x2a, 0xa8, 0x0d, 0x2d, 0x3d, 0x88, 0x98, 0x8c, 0x92, 0x54, 0xa7, 0x09, 0x37,
-	0x77, 0xa0, 0x86, 0x9b, 0x3a, 0x3e, 0x90, 0x17, 0x79, 0x14, 0x8d, 0xe1, 0x20, 0x31, 0x06, 0x49,
-	0xbf, 0x62, 0x96, 0x7e, 0x52, 0xb2, 0xf4, 0xed, 0x76, 0xe2, 0x42, 0x09, 0x7d, 0x00, 0xc8, 0x0e,
-	0x77, 0x0a, 0xa8, 0x9a, 0x02, 0x5a, 0x36, 0xb3, 0x55, 0xc2, 0x0f, 0xf0, 0x56, 0x2a, 0x58, 0x3c,
-	0x65, 0x29, 0xe1, 0xd1, 0x25, 0x8b, 0x67, 0x2c, 0x9e, 0xfb, 0x9e, 0x79, 0x5a, 0x3a, 0x65, 0x3e,
-	0x14, 0xbc, 0x9e, 0xa5, 0xe1, 0x56, 0xfa, 0x46, 0x24, 0xf8, 0xcb, 0x81, 0xe6, 0xae, 0xeb, 0x08,
-	0x41, 0x25, 0x26, 0x2b, 0x9a, 0xbf, 0x26, 0x66, 0x8c, 0x9e, 0x83, 0xc7, 0xc9, 0x25, 0xe5, 0xd2,
-	0x77, 0xef, 0x64, 0xc3, 0xae, 0x64, 0xf8, 0x8d, 0xe1, 0xf6, 0x63, 0x25, 0x36, 0x38, 0x17, 0x42,
-	0x67, 0x50, 0x4d, 0x13, 0xa1, 0x8a, 0x33, 0x7d, 0xbf, 0x6c, 0x2f, 0x89, 0xb8, 0x69, 0x0c, 0xcb,
-	0x3c, 0x7e, 0x02, 0x8d, 0x2d, 0x65, 0xd4, 0x02, 0xf7, 0x15, 0xdd, 0xe4, 0x75, 0xeb, 0x21, 0xba,
-	0x07, 0xd5, 0xd7, 0x84, 0x67, 0xf6, 0x29, 0xae, 0x63, 0x0b, 0xbe, 0xd8, 0xff, 0xdc, 0x09, 0xbe,
-	0x86, 0xc3, 0x6d, 0x45, 0xfd, 0x3d, 0xc4, 0xd9, 0xea, 0x32, 0x7f, 0x44, 0x8f, 0xf4, 0xf7, 0x60,
-	0x31, 0xba, 0x97, 0xdb, 0x51, 0x7c, 0x28, 0x06, 0xf5, 0x3c, 0xa8, 0xe8, 0x1a, 0x1e, 0x7d, 0x04,
-	0xad, 0x37, 0x5d, 0x46, 0x87, 0x50, 0x7b, 0x31, 0xee, 0x47, 0xa3, 0x7e, 0x1f, 0xdb, 0x67, 0x5b,
-	0xa3, 0x0b, 0x3c, 0x78, 0x3a, 0xf8, 0xb6, 0xe5, 0xf4, 0xba, 0xbf, 0x5f, 0x9f, 0x38, 0x7f, 0x5c,
-	0x9f, 0x38, 0x7f, 0x5e, 0x9f, 0x38, 0xdf, 0x3f, 0xb4, 0xbb, 0x66, 0x49, 0x87, 0xa4, 0xac, 0x73,
-	0xcb, 0x4f, 0x79, 0xe9, 0x99, 0x3f, 0xf2, 0xe3, 0xbf, 0x03, 0x00, 0x00, 0xff, 0xff, 0x98, 0x47,
-	0x3a, 0xbe, 0x4b, 0x07, 0x00, 0x00,
+	// 875 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xc1, 0x6e, 0x23, 0x45,
+	0x10, 0xcd, 0x64, 0xec, 0x89, 0x5d, 0x4e, 0x2c, 0xd3, 0x5a, 0x2d, 0x43, 0x60, 0xb3, 0xd1, 0x68,
+	0x0f, 0xd6, 0x02, 0x36, 0x6b, 0x10, 0xb0, 0x1c, 0x90, 0x62, 0x64, 0x36, 0x5e, 0x61, 0xe2, 0x6d,
+	0x7b, 0x39, 0x20, 0xa4, 0x51, 0xdb, 0xd3, 0x19, 0xb7, 0xb7, 0x3d, 0x3d, 0xea, 0xe9, 0x89, 0x93,
+	0x13, 0x9f, 0xc0, 0x0f, 0xf0, 0x07, 0x1c, 0x11, 0xff, 0xc0, 0x91, 0x4f, 0x58, 0xe5, 0x33, 0x38,
+	0xa1, 0xee, 0xf6, 0x10, 0x7b, 0x45, 0x70, 0xf6, 0xd6, 0xaf, 0x6a, 0xea, 0x55, 0xf5, 0xeb, 0x9a,
+	0x2a, 0x78, 0x44, 0x72, 0x35, 0xa3, 0x89, 0x62, 0x53, 0xa2, 0x98, 0x48, 0xda, 0x17, 0x4f, 0x08,
+	0x4f, 0x67, 0xe4, 0x49, 0x3b, 0x15, 0x9c, 0x4d, 0xaf, 0x5a, 0xa9, 0x14, 0x4a, 0xa0, 0x07, 0x2c,
+	0x53, 0x4c, 0xb4, 0x36, 0xbf, 0x6d, 0x15, 0xdf, 0x1e, 0x3e, 0x8c, 0x85, 0x88, 0x39, 0x6d, 0x93,
+	0x94, 0xb5, 0xcf, 0x19, 0xe5, 0x51, 0x38, 0xa1, 0x33, 0x72, 0xc1, 0x84, 0xb4, 0xf1, 0xc1, 0xcf,
+	0x50, 0x1b, 0x29, 0xc9, 0x92, 0x78, 0x40, 0xd4, 0x74, 0x86, 0xee, 0x43, 0x99, 0x5e, 0x92, 0xa9,
+	0xf2, 0x9d, 0x63, 0xa7, 0x59, 0x3d, 0xdd, 0xc1, 0x16, 0x22, 0x1f, 0xbc, 0x54, 0xd2, 0x73, 0x76,
+	0xe9, 0xef, 0xae, 0x1c, 0x2b, 0xac, 0x3d, 0x59, 0x7e, 0xae, 0x3d, 0x6e, 0xe1, 0xb1, 0x58, 0x73,
+	0x49, 0x1a, 0xd3, 0x4b, 0xbf, 0x54, 0x70, 0x19, 0xd8, 0xdd, 0x07, 0x58, 0xe8, 0x64, 0xa1, 0xba,
+	0x4a, 0x69, 0xf0, 0x8b, 0x03, 0xd5, 0x41, 0xae, 0x72, 0xc2, 0xc7, 0x3c, 0x43, 0xef, 0x43, 0x95,
+	0x70, 0x2e, 0x96, 0xa1, 0xe2, 0x99, 0xa9, 0xa1, 0x82, 0x2b, 0xc6, 0xa0, 0x9d, 0x27, 0x50, 0x5a,
+	0x88, 0x88, 0x9a, 0x12, 0xea, 0x9d, 0x8f, 0x5b, 0xff, 0x7b, 0xf5, 0xd6, 0xbf, 0xa4, 0xad, 0x81,
+	0x88, 0x28, 0x36, 0xa1, 0x41, 0x00, 0x25, 0x8d, 0x10, 0x80, 0x37, 0x1a, 0xe3, 0xfe, 0x37, 0xe3,
+	0xc6, 0x0e, 0xaa, 0x03, 0x0c, 0x7b, 0x78, 0xd0, 0x1f, 0x8d, 0xfa, 0x3f, 0xf4, 0x1a, 0x4e, 0xf0,
+	0x87, 0x0b, 0xee, 0xf3, 0xa5, 0x42, 0xf7, 0xc1, 0x63, 0x59, 0x96, 0x53, 0x69, 0xc5, 0xc0, 0x2b,
+	0x84, 0x3e, 0x80, 0x2a, 0xc9, 0x23, 0x46, 0x93, 0x29, 0xcd, 0xfc, 0xdd, 0x63, 0xb7, 0x59, 0xc5,
+	0x37, 0x06, 0xf4, 0x1e, 0x54, 0xe6, 0xcb, 0x57, 0x59, 0x98, 0x4b, 0x66, 0x15, 0xc1, 0x7b, 0x1a,
+	0xbf, 0x94, 0x0c, 0x21, 0x28, 0xe9, 0xa3, 0x0f, 0xc6, 0x6c, 0xce, 0xe8, 0x21, 0xd4, 0xe6, 0x4b,
+	0x15, 0xce, 0x28, 0x89, 0xa8, 0xcc, 0x7c, 0xcf, 0xd0, 0xc1, 0x7c, 0xa9, 0x4e, 0xad, 0x05, 0x3d,
+	0x00, 0x8d, 0xc2, 0x94, 0x48, 0xb2, 0xc8, 0xfc, 0x3d, 0x9b, 0x6e, 0xbe, 0x54, 0x43, 0x63, 0x40,
+	0x23, 0x38, 0x50, 0x92, 0xc5, 0x31, 0x95, 0xa1, 0xcc, 0x39, 0xcd, 0xfc, 0xea, 0xb1, 0xdb, 0xac,
+	0x75, 0x5a, 0x5b, 0xc4, 0x79, 0xbe, 0x54, 0xad, 0xb1, 0x8d, 0xc3, 0x39, 0xa7, 0x78, 0x5f, 0xdd,
+	0x80, 0xec, 0xf0, 0x77, 0x07, 0x6a, 0x6b, 0x5e, 0xf4, 0x02, 0xea, 0xf4, 0x72, 0xca, 0xf3, 0x88,
+	0x46, 0x61, 0x4a, 0xd4, 0x4c, 0x3f, 0x8d, 0xce, 0xf2, 0x78, 0x4b, 0x96, 0xb5, 0xce, 0xc2, 0x07,
+	0x05, 0xc3, 0x50, 0x13, 0x68, 0x4a, 0x96, 0x6c, 0x50, 0xee, 0xbe, 0x3d, 0x65, 0xc1, 0x60, 0x28,
+	0x83, 0x5f, 0x1d, 0xf0, 0x87, 0x94, 0xca, 0x93, 0x8d, 0xd0, 0x01, 0x55, 0x33, 0x11, 0xa1, 0xaf,
+	0xa1, 0xb4, 0x28, 0x7a, 0xaa, 0xd6, 0x69, 0xde, 0xb5, 0x77, 0x4e, 0x77, 0xb0, 0x89, 0x43, 0x9f,
+	0x83, 0x3b, 0x5f, 0x2a, 0xd3, 0x7a, 0xb5, 0x4e, 0xb0, 0x5d, 0xdd, 0xd3, 0x1d, 0xac, 0x03, 0xba,
+	0x15, 0xf0, 0xec, 0xd3, 0x05, 0x18, 0x0e, 0xcf, 0x24, 0x8b, 0x59, 0xf2, 0x9f, 0xf5, 0x7d, 0x66,
+	0xf9, 0x9d, 0xbb, 0xf2, 0x1b, 0xf6, 0xe0, 0x37, 0x17, 0xbc, 0xa1, 0x19, 0x07, 0xe8, 0x19, 0xec,
+	0x29, 0x22, 0x63, 0xaa, 0x8a, 0xc7, 0xd9, 0xf6, 0x7f, 0x8c, 0xcd, 0xd7, 0x23, 0xca, 0xe9, 0x54,
+	0x09, 0x89, 0x8b, 0x68, 0x34, 0x80, 0x72, 0x4a, 0x75, 0x2f, 0xda, 0x07, 0xf9, 0x62, 0x0b, 0xcd,
+	0x6d, 0x8a, 0x63, 0xcb, 0x82, 0x9a, 0xd0, 0xd0, 0x87, 0x90, 0x65, 0xa1, 0x48, 0xb5, 0x9b, 0x70,
+	0xf3, 0x5f, 0x54, 0x70, 0x5d, 0xdb, 0xfb, 0xd9, 0xd9, 0xca, 0x8a, 0x46, 0xb0, 0x27, 0x8c, 0x40,
+	0x99, 0x5f, 0x32, 0xa9, 0x9f, 0x6e, 0x49, 0x7d, 0xbb, 0x9c, 0xb8, 0x60, 0x42, 0x1f, 0x01, 0xb2,
+	0xc7, 0x8d, 0x02, 0xca, 0xa6, 0x80, 0x86, 0xf5, 0xac, 0x95, 0xf0, 0x13, 0xbc, 0x93, 0x4a, 0x96,
+	0x4c, 0x59, 0x4a, 0x78, 0x38, 0x61, 0x49, 0xc4, 0x92, 0xd8, 0xf7, 0xcc, 0xb8, 0x69, 0x6f, 0xd3,
+	0xa1, 0x88, 0xeb, 0xda, 0x30, 0xdc, 0x48, 0xdf, 0xb0, 0x04, 0x7f, 0x3b, 0x50, 0xdf, 0x54, 0x1d,
+	0xbd, 0x0b, 0xa5, 0x84, 0x2c, 0xa8, 0x9d, 0x30, 0x5d, 0xf7, 0xf5, 0xc9, 0x2e, 0x36, 0x06, 0xf4,
+	0x02, 0x3c, 0x4e, 0x26, 0x94, 0x67, 0xbe, 0x7b, 0x27, 0x2d, 0x36, 0x79, 0x5b, 0xdf, 0x99, 0xd8,
+	0x5e, 0xa2, 0xe4, 0x15, 0x5e, 0x11, 0xa1, 0x13, 0x28, 0xa7, 0x42, 0xaa, 0xe2, 0x61, 0x3f, 0xdc,
+	0x76, 0x21, 0x21, 0x6f, 0xba, 0xc3, 0x46, 0x1e, 0x3e, 0x85, 0xda, 0x1a, 0x33, 0x6a, 0x80, 0xfb,
+	0x8a, 0x5e, 0xad, 0xc6, 0xa3, 0x3e, 0xa2, 0x7b, 0x50, 0xbe, 0x20, 0x3c, 0xb7, 0x33, 0xba, 0x8a,
+	0x2d, 0xf8, 0x6a, 0xf7, 0x4b, 0x27, 0xf8, 0x16, 0xf6, 0xd7, 0x19, 0xf5, 0xde, 0x48, 0xf2, 0xc5,
+	0x64, 0x35, 0x5d, 0x0f, 0xf4, 0xde, 0xb0, 0x18, 0xdd, 0x5b, 0x69, 0x52, 0x6c, 0x1a, 0x83, 0xba,
+	0x1e, 0x94, 0x74, 0x0d, 0x8f, 0x3f, 0x81, 0xc6, 0x9b, 0x52, 0xa3, 0x7d, 0xa8, 0xbc, 0x1c, 0xf5,
+	0xc2, 0x61, 0xaf, 0x87, 0xed, 0x3c, 0xd7, 0xe8, 0x0c, 0xf7, 0x9f, 0xf5, 0xbf, 0x6f, 0x38, 0xdd,
+	0xce, 0x9f, 0xd7, 0x47, 0xce, 0x5f, 0xd7, 0x47, 0xce, 0xeb, 0xeb, 0x23, 0xe7, 0xc7, 0x47, 0xf6,
+	0xd6, 0x4c, 0x98, 0x9d, 0x78, 0xcb, 0x8e, 0x9d, 0x78, 0x66, 0x3b, 0x7e, 0xfa, 0x4f, 0x00, 0x00,
+	0x00, 0xff, 0xff, 0x1a, 0xca, 0x4e, 0x3c, 0x85, 0x07, 0x00, 0x00,
 }
 
 func (m *StringMatch) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1312,59 +1129,87 @@ func (m *StringMatch) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *StringMatch) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *StringMatch) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.MatchType != nil {
-		nn1, err := m.MatchType.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn1
-	}
 	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return i, nil
+	if m.MatchType != nil {
+		{
+			size := m.MatchType.Size()
+			i -= size
+			if _, err := m.MatchType.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *StringMatch_Exact) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0xa
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *StringMatch_Exact) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Exact)
+	copy(dAtA[i:], m.Exact)
 	i = encodeVarintPolicy(dAtA, i, uint64(len(m.Exact)))
-	i += copy(dAtA[i:], m.Exact)
-	return i, nil
+	i--
+	dAtA[i] = 0xa
+	return len(dAtA) - i, nil
 }
 func (m *StringMatch_Prefix) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x12
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *StringMatch_Prefix) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Prefix)
+	copy(dAtA[i:], m.Prefix)
 	i = encodeVarintPolicy(dAtA, i, uint64(len(m.Prefix)))
-	i += copy(dAtA[i:], m.Prefix)
-	return i, nil
+	i--
+	dAtA[i] = 0x12
+	return len(dAtA) - i, nil
 }
 func (m *StringMatch_Suffix) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x1a
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *StringMatch_Suffix) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Suffix)
+	copy(dAtA[i:], m.Suffix)
 	i = encodeVarintPolicy(dAtA, i, uint64(len(m.Suffix)))
-	i += copy(dAtA[i:], m.Suffix)
-	return i, nil
+	i--
+	dAtA[i] = 0x1a
+	return len(dAtA) - i, nil
 }
 func (m *StringMatch_Regex) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x22
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *StringMatch_Regex) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Regex)
+	copy(dAtA[i:], m.Regex)
 	i = encodeVarintPolicy(dAtA, i, uint64(len(m.Regex)))
-	i += copy(dAtA[i:], m.Regex)
-	return i, nil
+	i--
+	dAtA[i] = 0x22
+	return len(dAtA) - i, nil
 }
 func (m *MutualTls) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1372,35 +1217,41 @@ func (m *MutualTls) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *MutualTls) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MutualTls) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.Mode != 0 {
+		i = encodeVarintPolicy(dAtA, i, uint64(m.Mode))
+		i--
+		dAtA[i] = 0x10
+	}
 	if m.AllowTls {
-		dAtA[i] = 0x8
-		i++
+		i--
 		if m.AllowTls {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
 		}
-		i++
+		i--
+		dAtA[i] = 0x8
 	}
-	if m.Mode != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintPolicy(dAtA, i, uint64(m.Mode))
-	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
-	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *Jwt) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1408,89 +1259,88 @@ func (m *Jwt) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Jwt) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Jwt) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Issuer) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintPolicy(dAtA, i, uint64(len(m.Issuer)))
-		i += copy(dAtA[i:], m.Issuer)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if len(m.Audiences) > 0 {
-		for _, s := range m.Audiences {
-			dAtA[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
+	if len(m.Jwks) > 0 {
+		i -= len(m.Jwks)
+		copy(dAtA[i:], m.Jwks)
+		i = encodeVarintPolicy(dAtA, i, uint64(len(m.Jwks)))
+		i--
+		dAtA[i] = 0x52
+	}
+	if len(m.TriggerRules) > 0 {
+		for iNdEx := len(m.TriggerRules) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.TriggerRules[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintPolicy(dAtA, i, uint64(size))
 			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if len(m.JwksUri) > 0 {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintPolicy(dAtA, i, uint64(len(m.JwksUri)))
-		i += copy(dAtA[i:], m.JwksUri)
-	}
-	if len(m.JwtHeaders) > 0 {
-		for _, s := range m.JwtHeaders {
-			dAtA[i] = 0x32
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+			i--
+			dAtA[i] = 0x4a
 		}
 	}
 	if len(m.JwtParams) > 0 {
-		for _, s := range m.JwtParams {
+		for iNdEx := len(m.JwtParams) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.JwtParams[iNdEx])
+			copy(dAtA[i:], m.JwtParams[iNdEx])
+			i = encodeVarintPolicy(dAtA, i, uint64(len(m.JwtParams[iNdEx])))
+			i--
 			dAtA[i] = 0x3a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
 		}
 	}
-	if len(m.TriggerRules) > 0 {
-		for _, msg := range m.TriggerRules {
-			dAtA[i] = 0x4a
-			i++
-			i = encodeVarintPolicy(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
+	if len(m.JwtHeaders) > 0 {
+		for iNdEx := len(m.JwtHeaders) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.JwtHeaders[iNdEx])
+			copy(dAtA[i:], m.JwtHeaders[iNdEx])
+			i = encodeVarintPolicy(dAtA, i, uint64(len(m.JwtHeaders[iNdEx])))
+			i--
+			dAtA[i] = 0x32
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.JwksUri) > 0 {
+		i -= len(m.JwksUri)
+		copy(dAtA[i:], m.JwksUri)
+		i = encodeVarintPolicy(dAtA, i, uint64(len(m.JwksUri)))
+		i--
+		dAtA[i] = 0x1a
 	}
-	return i, nil
+	if len(m.Audiences) > 0 {
+		for iNdEx := len(m.Audiences) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Audiences[iNdEx])
+			copy(dAtA[i:], m.Audiences[iNdEx])
+			i = encodeVarintPolicy(dAtA, i, uint64(len(m.Audiences[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.Issuer) > 0 {
+		i -= len(m.Issuer)
+		copy(dAtA[i:], m.Issuer)
+		i = encodeVarintPolicy(dAtA, i, uint64(len(m.Issuer)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *Jwt_TriggerRule) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1498,44 +1348,54 @@ func (m *Jwt_TriggerRule) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Jwt_TriggerRule) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Jwt_TriggerRule) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.ExcludedPaths) > 0 {
-		for _, msg := range m.ExcludedPaths {
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintPolicy(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.IncludedPaths) > 0 {
-		for _, msg := range m.IncludedPaths {
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintPolicy(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
+		for iNdEx := len(m.IncludedPaths) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.IncludedPaths[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintPolicy(dAtA, i, uint64(size))
 			}
-			i += n
+			i--
+			dAtA[i] = 0x12
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.ExcludedPaths) > 0 {
+		for iNdEx := len(m.ExcludedPaths) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.ExcludedPaths[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintPolicy(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *PeerAuthenticationMethod) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1543,55 +1403,75 @@ func (m *PeerAuthenticationMethod) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *PeerAuthenticationMethod) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *PeerAuthenticationMethod) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Params != nil {
-		nn2, err := m.Params.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn2
-	}
 	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return i, nil
+	if m.Params != nil {
+		{
+			size := m.Params.Size()
+			i -= size
+			if _, err := m.Params.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *PeerAuthenticationMethod_Mtls) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *PeerAuthenticationMethod_Mtls) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	if m.Mtls != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintPolicy(dAtA, i, uint64(m.Mtls.Size()))
-		n3, err := m.Mtls.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.Mtls.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintPolicy(dAtA, i, uint64(size))
 		}
-		i += n3
+		i--
+		dAtA[i] = 0xa
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 func (m *PeerAuthenticationMethod_Jwt) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *PeerAuthenticationMethod_Jwt) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	if m.Jwt != nil {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintPolicy(dAtA, i, uint64(m.Jwt.Size()))
-		n4, err := m.Jwt.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
+		{
+			size, err := m.Jwt.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintPolicy(dAtA, i, uint64(size))
 		}
-		i += n4
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 func (m *OriginAuthenticationMethod) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1599,30 +1479,38 @@ func (m *OriginAuthenticationMethod) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *OriginAuthenticationMethod) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *OriginAuthenticationMethod) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Jwt != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintPolicy(dAtA, i, uint64(m.Jwt.Size()))
-		n5, err := m.Jwt.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
-	}
 	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return i, nil
+	if m.Jwt != nil {
+		{
+			size, err := m.Jwt.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintPolicy(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *Policy) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1630,81 +1518,93 @@ func (m *Policy) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Policy) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Policy) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Targets) > 0 {
-		for _, msg := range m.Targets {
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintPolicy(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if len(m.Peers) > 0 {
-		for _, msg := range m.Peers {
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintPolicy(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if m.PeerIsOptional {
-		dAtA[i] = 0x18
-		i++
-		if m.PeerIsOptional {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i++
-	}
-	if len(m.Origins) > 0 {
-		for _, msg := range m.Origins {
-			dAtA[i] = 0x22
-			i++
-			i = encodeVarintPolicy(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
+	if m.PrincipalBinding != 0 {
+		i = encodeVarintPolicy(dAtA, i, uint64(m.PrincipalBinding))
+		i--
+		dAtA[i] = 0x30
 	}
 	if m.OriginIsOptional {
-		dAtA[i] = 0x28
-		i++
+		i--
 		if m.OriginIsOptional {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
 		}
-		i++
+		i--
+		dAtA[i] = 0x28
 	}
-	if m.PrincipalBinding != 0 {
-		dAtA[i] = 0x30
-		i++
-		i = encodeVarintPolicy(dAtA, i, uint64(m.PrincipalBinding))
+	if len(m.Origins) > 0 {
+		for iNdEx := len(m.Origins) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Origins[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintPolicy(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x22
+		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.PeerIsOptional {
+		i--
+		if m.PeerIsOptional {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
 	}
-	return i, nil
+	if len(m.Peers) > 0 {
+		for iNdEx := len(m.Peers) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Peers[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintPolicy(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.Targets) > 0 {
+		for iNdEx := len(m.Targets) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Targets[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintPolicy(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *TargetSelector) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1712,55 +1612,66 @@ func (m *TargetSelector) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *TargetSelector) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TargetSelector) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Name) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintPolicy(dAtA, i, uint64(len(m.Name)))
-		i += copy(dAtA[i:], m.Name)
-	}
-	if len(m.Ports) > 0 {
-		for _, msg := range m.Ports {
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintPolicy(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.Labels) > 0 {
-		for k, _ := range m.Labels {
-			dAtA[i] = 0x1a
-			i++
+		for k := range m.Labels {
 			v := m.Labels[k]
-			mapSize := 1 + len(k) + sovPolicy(uint64(len(k))) + 1 + len(v) + sovPolicy(uint64(len(v)))
-			i = encodeVarintPolicy(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintPolicy(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
 			i = encodeVarintPolicy(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintPolicy(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintPolicy(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x1a
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Ports) > 0 {
+		for iNdEx := len(m.Ports) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Ports[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintPolicy(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x12
+		}
 	}
-	return i, nil
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintPolicy(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *PortSelector) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1768,46 +1679,65 @@ func (m *PortSelector) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *PortSelector) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *PortSelector) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Port != nil {
-		nn6, err := m.Port.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += nn6
-	}
 	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return i, nil
+	if m.Port != nil {
+		{
+			size := m.Port.Size()
+			i -= size
+			if _, err := m.Port.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *PortSelector_Number) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x8
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *PortSelector_Number) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	i = encodeVarintPolicy(dAtA, i, uint64(m.Number))
-	return i, nil
+	i--
+	dAtA[i] = 0x8
+	return len(dAtA) - i, nil
 }
 func (m *PortSelector_Name) MarshalTo(dAtA []byte) (int, error) {
-	i := 0
-	dAtA[i] = 0x12
-	i++
+	return m.MarshalToSizedBuffer(dAtA[:m.Size()])
+}
+
+func (m *PortSelector_Name) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Name)
+	copy(dAtA[i:], m.Name)
 	i = encodeVarintPolicy(dAtA, i, uint64(len(m.Name)))
-	i += copy(dAtA[i:], m.Name)
-	return i, nil
+	i--
+	dAtA[i] = 0x12
+	return len(dAtA) - i, nil
 }
 func encodeVarintPolicy(dAtA []byte, offset int, v uint64) int {
+	offset -= sovPolicy(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *StringMatch) Size() (n int) {
 	if m == nil {
@@ -1919,6 +1849,10 @@ func (m *Jwt) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovPolicy(uint64(l))
 		}
+	}
+	l = len(m.Jwks)
+	if l > 0 {
+		n += 1 + l + sovPolicy(uint64(l))
 	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
@@ -2110,14 +2044,7 @@ func (m *PortSelector_Name) Size() (n int) {
 }
 
 func sovPolicy(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
+	return (math_bits.Len64(x|1) + 6) / 7
 }
 func sozPolicy(x uint64) (n int) {
 	return sovPolicy(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -2619,6 +2546,38 @@ func (m *Jwt) Unmarshal(dAtA []byte) error {
 			if err := m.TriggerRules[len(m.TriggerRules)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Jwks", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowPolicy
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthPolicy
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthPolicy
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Jwks = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

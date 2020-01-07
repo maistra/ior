@@ -19,7 +19,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/gogo/status"
+	"istio.io/istio/pkg/mcp/status"
 
 	mcp "istio.io/api/mcp/v1alpha1"
 	"istio.io/istio/pkg/mcp/monitoring"
@@ -41,6 +41,7 @@ type Client struct {
 	reporter monitoring.Reporter
 }
 
+// NewClient returns a new instance of Client.
 func NewClient(client mcp.ResourceSourceClient, options *Options) *Client {
 	return &Client{
 		Sink:     New(options),
@@ -84,7 +85,7 @@ func (c *Client) Run(ctx context.Context) {
 			scope.Errorf("Failed to create a new MCP sink stream: %v", err)
 		}
 
-		err := c.processStream(c.stream)
+		err := c.ProcessStream(c.stream)
 		if err != nil && err != io.EOF {
 			c.reporter.RecordRecvError(err, status.Code(err))
 			scope.Errorf("Error receiving MCP response: %v", err)

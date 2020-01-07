@@ -154,7 +154,7 @@
 // kind: Gateway
 // metadata:
 //  name: istio-egressgateway
-//  namespace: egress
+//  namespace: istio-system
 // spec:
 //  selector:
 //    istio: egressgateway
@@ -198,7 +198,7 @@
 //         host: istio-egressgateway.istio-system.svc.cluster.local
 //   - match:
 //     - port: 80
-//       gateway:
+//       gateways:
 //       - istio-egressgateway
 //     route:
 //     - destination:
@@ -289,7 +289,7 @@
 //
 // The following example illustrates the usage of a `ServiceEntry`
 // containing a subject alternate name
-// whose format conforms to the [SPIFEE standard](https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE-ID.md):
+// whose format conforms to the [SPIFFE standard](https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE-ID.md):
 //
 // ```yaml
 // apiVersion: networking.istio.io/v1alpha3
@@ -320,7 +320,9 @@ import (
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
+	_ "istio.io/gogo-genproto/googleapis/google/api"
 	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -332,7 +334,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // Location specifies whether the service is part of Istio mesh or
 // outside the mesh.  Location determines the behavior of several
@@ -423,21 +425,33 @@ func (ServiceEntry_Resolution) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_9220e0fa673c4bf8, []int{0, 1}
 }
 
+// ServiceEntry enables adding additional entries into Istio's internal
+// service registry.
+//
+// <!-- go code generation tags
+// +kubetype-gen
+// +kubetype-gen:groupVersion=networking.istio.io/v1alpha3
+// +genclient
+// +k8s:deepcopy-gen=true
+// -->
 type ServiceEntry struct {
-	// REQUIRED. The hosts associated with the ServiceEntry. Could be a DNS
-	// name with wildcard prefix (external services only). For HTTP traffic
-	// the HTTP Host/Authority header will be matched against the hosts field.
-	// For HTTPs or TLS traffic containing Server Name Indication (SNI), the SNI value
-	// will be matched against the hosts field. For all other protocols
-	// the hosts will be ignored, and the port and addresses fields
-	// will be used if present. Note that when resolution is set to type DNS
+	// The hosts associated with the ServiceEntry. Could be a DNS
+	// name with wildcard prefix.
+	//
+	// 1. The hosts field is used to select matching hosts in VirtualServices and DestinationRules.
+	// 2. For HTTP traffic the HTTP Host/Authority header will be matched against the hosts field.
+	// 3. For HTTPs or TLS traffic containing Server Name Indication (SNI), the SNI value
+	// will be matched against the hosts field.
+	//
+	// Note that when resolution is set to type DNS
 	// and no endpoints are specified, the host field will be used as the DNS name
 	// of the endpoint to route traffic to.
 	Hosts []string `protobuf:"bytes,1,rep,name=hosts,proto3" json:"hosts,omitempty"`
 	// The virtual IP addresses associated with the service. Could be CIDR
-	// prefix. For HTTP traffic the addresses field will be ignored and
-	// the destination will be identified based on the HTTP Host/Authority
-	// header. If one or more IP addresses are specified,
+	// prefix. For HTTP traffic, generated route configurations will include http route
+	// domains for both the `addresses` and `hosts` field values and the destination will
+	// be identified based on the HTTP Host/Authority header.
+	// If one or more IP addresses are specified,
 	// the incoming traffic will be identified as belonging to this service
 	// if the destination IP matches the IP/CIDRs specified in the addresses
 	// field. If the Addresses field is empty, traffic will be identified
@@ -448,14 +462,14 @@ type ServiceEntry struct {
 	// the specified destination endpoint IP/host. Unix domain socket
 	// addresses are not supported in this field.
 	Addresses []string `protobuf:"bytes,2,rep,name=addresses,proto3" json:"addresses,omitempty"`
-	// REQUIRED. The ports associated with the external service. If the
+	// The ports associated with the external service. If the
 	// Endpoints are Unix domain socket addresses, there must be exactly one
 	// port.
 	Ports []*Port `protobuf:"bytes,3,rep,name=ports,proto3" json:"ports,omitempty"`
 	// Specify whether the service should be considered external to the mesh
 	// or part of the mesh.
 	Location ServiceEntry_Location `protobuf:"varint,4,opt,name=location,proto3,enum=istio.networking.v1alpha3.ServiceEntry_Location" json:"location,omitempty"`
-	// REQUIRED: Service discovery mode for the hosts. Care must be taken
+	// Service discovery mode for the hosts. Care must be taken
 	// when setting the resolution mode to NONE for a TCP port without
 	// accompanying IP addresses. In such cases, traffic to any IP on
 	// said port will be allowed (i.e. 0.0.0.0:<port>).
@@ -482,9 +496,9 @@ type ServiceEntry struct {
 	// NOTE: in the current release, the `exportTo` value is restricted to
 	// "." or "*" (i.e., the current namespace or all namespaces).
 	ExportTo []string `protobuf:"bytes,7,rep,name=export_to,json=exportTo,proto3" json:"export_to,omitempty"`
-	// The list of subject alternate names allowed for workloads that
+	// The list of subject alternate names allowed for workload instances that
 	// implement this service. This information is used to enforce
-	// [secure-naming](/docs/concepts/security/#secure-naming).
+	// [secure-naming](https://istio.io/docs/concepts/security/#secure-naming).
 	// If specified, the proxy will verify that the server
 	// certificate's subject alternate name matches one of the specified values.
 	SubjectAltNames      []string `protobuf:"bytes,8,rep,name=subject_alt_names,json=subjectAltNames,proto3" json:"subject_alt_names,omitempty"`
@@ -507,7 +521,7 @@ func (m *ServiceEntry) XXX_Marshal(b []byte, deterministic bool) ([]byte, error)
 		return xxx_messageInfo_ServiceEntry.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -585,7 +599,7 @@ func (m *ServiceEntry) GetSubjectAltNames() []string {
 // Endpoint defines a network address (IP or hostname) associated with
 // the mesh service.
 type ServiceEntry_Endpoint struct {
-	// REQUIRED: Address associated with the network endpoint without the
+	// Address associated with the network endpoint without the
 	// port.  Domain names can be used if and only if the resolution is set
 	// to DNS, and must be fully-qualified without wildcards. Use the form
 	// unix:///absolute/path/to/socket for Unix domain socket endpoints.
@@ -645,7 +659,7 @@ func (m *ServiceEntry_Endpoint) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return xxx_messageInfo_ServiceEntry_Endpoint.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -720,46 +734,48 @@ func init() {
 }
 
 var fileDescriptor_9220e0fa673c4bf8 = []byte{
-	// 527 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x93, 0xdf, 0x8e, 0xd2, 0x40,
-	0x14, 0xc6, 0x77, 0xe8, 0x52, 0xda, 0xb3, 0xae, 0xb2, 0x13, 0x63, 0x46, 0x34, 0x58, 0xb9, 0x91,
-	0x68, 0x52, 0x56, 0x36, 0x26, 0xeb, 0x9f, 0x1b, 0xd4, 0x26, 0x6e, 0x82, 0x55, 0x07, 0x2e, 0x8c,
-	0x37, 0x64, 0x80, 0x09, 0xd4, 0xad, 0x1d, 0xd2, 0x19, 0x40, 0xde, 0xc2, 0xa7, 0xf0, 0x59, 0xbc,
-	0xf4, 0x11, 0x0c, 0x4f, 0x62, 0x3a, 0x9d, 0x02, 0x17, 0xab, 0xbb, 0x7b, 0xd7, 0x73, 0xe6, 0x7c,
-	0xbf, 0x7e, 0x73, 0xce, 0x19, 0x78, 0x94, 0x70, 0xb5, 0x14, 0xe9, 0x79, 0x94, 0x4c, 0x5a, 0x8b,
-	0xa7, 0x2c, 0x9e, 0x4d, 0xd9, 0x49, 0x4b, 0xf2, 0x74, 0x11, 0x8d, 0xf8, 0x80, 0x27, 0x2a, 0x5d,
-	0xf9, 0xb3, 0x54, 0x28, 0x81, 0xef, 0x46, 0x52, 0x45, 0xc2, 0xdf, 0x96, 0xfb, 0x45, 0x79, 0xed,
-	0xe1, 0x45, 0x8c, 0x09, 0x53, 0x7c, 0xc9, 0x8c, 0xba, 0xf1, 0xb3, 0x02, 0x37, 0x7a, 0x39, 0x35,
-	0xc8, 0xa0, 0xf8, 0x36, 0x94, 0xa7, 0x42, 0x2a, 0x49, 0x90, 0x67, 0x35, 0x5d, 0x9a, 0x07, 0xf8,
-	0x3e, 0xb8, 0x6c, 0x3c, 0x4e, 0xb9, 0x94, 0x5c, 0x92, 0x92, 0x3e, 0xd9, 0x26, 0xf0, 0x33, 0x28,
-	0xcf, 0x44, 0xaa, 0x24, 0xb1, 0x3c, 0xab, 0x79, 0xd0, 0x7e, 0xe0, 0xff, 0xd3, 0x92, 0xff, 0x51,
-	0xa4, 0x8a, 0xe6, 0xd5, 0xb8, 0x0b, 0x4e, 0x2c, 0x46, 0x4c, 0x45, 0x22, 0x21, 0xfb, 0x1e, 0x6a,
-	0xde, 0x6c, 0x1f, 0xff, 0x47, 0xb9, 0xeb, 0xd2, 0xef, 0x1a, 0x1d, 0xdd, 0x10, 0x30, 0x05, 0x48,
-	0xb9, 0x14, 0xf1, 0x5c, 0xf3, 0xca, 0x9a, 0xd7, 0xbe, 0x2a, 0x8f, 0x6e, 0x94, 0x74, 0x87, 0x82,
-	0x43, 0x70, 0x79, 0x32, 0x9e, 0x89, 0x28, 0x51, 0x92, 0xd8, 0xfa, 0x72, 0x57, 0xb6, 0x18, 0x18,
-	0x21, 0xdd, 0x22, 0xf0, 0x3d, 0x70, 0xf9, 0xf7, 0xec, 0xf2, 0x03, 0x25, 0x48, 0x45, 0xb7, 0xd1,
-	0xc9, 0x13, 0x7d, 0x81, 0x1f, 0xc3, 0x91, 0x9c, 0x0f, 0xbf, 0xf2, 0x91, 0x1a, 0xb0, 0x58, 0x0d,
-	0x12, 0xf6, 0x8d, 0x4b, 0xe2, 0xe8, 0xa2, 0x5b, 0xe6, 0xa0, 0x13, 0xab, 0x30, 0x4b, 0xd7, 0x7e,
-	0x58, 0xe0, 0x14, 0x3f, 0xc0, 0x04, 0x2a, 0x66, 0x16, 0x04, 0x79, 0xa8, 0xe9, 0xd2, 0x22, 0xc4,
-	0x9f, 0x8a, 0xc1, 0x94, 0xb4, 0xf7, 0x97, 0xd7, 0xf5, 0xae, 0xc7, 0x25, 0x75, 0xae, 0x18, 0x5a,
-	0x1f, 0xec, 0x98, 0x0d, 0x79, 0x5c, 0x0c, 0xfb, 0xd5, 0xb5, 0x99, 0x5d, 0x2d, 0xcf, 0xa1, 0x86,
-	0x95, 0x5d, 0xc1, 0x00, 0xf4, 0x26, 0xb8, 0xb4, 0x08, 0x71, 0x2d, 0x5f, 0x92, 0x38, 0x52, 0x2b,
-	0x3d, 0x54, 0x97, 0x6e, 0x62, 0x7c, 0x07, 0xec, 0x25, 0x8f, 0x26, 0x53, 0x45, 0x6c, 0x0f, 0x35,
-	0x0f, 0xa9, 0x89, 0x6a, 0xa7, 0x00, 0x5b, 0xe3, 0xb8, 0x0a, 0xd6, 0x39, 0x5f, 0x99, 0xd6, 0x64,
-	0x9f, 0xd9, 0x8e, 0x2f, 0x58, 0x3c, 0xe7, 0xa4, 0xa4, 0x65, 0x79, 0xf0, 0xa2, 0x74, 0x8a, 0x6a,
-	0xcf, 0xe1, 0x60, 0xc7, 0xde, 0x65, 0x52, 0x77, 0x47, 0xda, 0x38, 0x06, 0xa7, 0xd8, 0x4a, 0x7c,
-	0x04, 0x87, 0xef, 0x83, 0xde, 0xbb, 0x41, 0xf0, 0xb9, 0x1f, 0xd0, 0xb0, 0xd3, 0xad, 0xee, 0x6d,
-	0x52, 0x67, 0xa1, 0x49, 0xa1, 0xc6, 0x13, 0x80, 0xed, 0xde, 0x61, 0x07, 0xf6, 0xc3, 0x0f, 0x61,
-	0x50, 0xdd, 0xc3, 0x00, 0x76, 0xaf, 0xdf, 0xe9, 0x9f, 0xbd, 0xa9, 0x22, 0x5c, 0x01, 0xeb, 0x6d,
-	0xd8, 0xab, 0x96, 0x5e, 0xfb, 0xbf, 0xd6, 0x75, 0xf4, 0x7b, 0x5d, 0x47, 0x7f, 0xd6, 0x75, 0xf4,
-	0xc5, 0xcb, 0x9b, 0x1e, 0x89, 0x16, 0x9b, 0x45, 0xad, 0x0b, 0x9e, 0xf9, 0xd0, 0xd6, 0xef, 0xfb,
-	0xe4, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x10, 0x53, 0xa9, 0xc0, 0x48, 0x04, 0x00, 0x00,
+	// 558 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0xdd, 0x6e, 0xd3, 0x30,
+	0x14, 0x5e, 0x92, 0x35, 0x4d, 0xce, 0x18, 0x74, 0x16, 0x42, 0x5e, 0x80, 0x2d, 0xec, 0x86, 0x0a,
+	0xa4, 0x74, 0x6c, 0x37, 0x63, 0x70, 0xd3, 0x41, 0x24, 0x26, 0x95, 0x00, 0x69, 0x25, 0x10, 0x37,
+	0x91, 0xdb, 0x9a, 0xd6, 0xcc, 0xc4, 0x55, 0xec, 0xb6, 0xf4, 0x41, 0x78, 0x19, 0x9e, 0x80, 0x4b,
+	0x1e, 0x61, 0xea, 0x93, 0xa0, 0x3a, 0x49, 0xdb, 0x8b, 0x01, 0xdb, 0x5d, 0xce, 0x67, 0x7f, 0xdf,
+	0xf9, 0xf9, 0x8e, 0x03, 0x8f, 0x53, 0xaa, 0xa6, 0x22, 0xbb, 0x60, 0xe9, 0xa0, 0x31, 0x79, 0x46,
+	0xf8, 0x68, 0x48, 0x8e, 0x1b, 0x92, 0x66, 0x13, 0xd6, 0xa3, 0x09, 0x4d, 0x55, 0x36, 0x0b, 0x46,
+	0x99, 0x50, 0x02, 0xed, 0x32, 0xa9, 0x98, 0x08, 0x56, 0xd7, 0x83, 0xf2, 0xba, 0xb7, 0x3f, 0x10,
+	0x62, 0xc0, 0x69, 0x83, 0x8c, 0x58, 0xe3, 0x0b, 0xa3, 0xbc, 0x9f, 0x74, 0xe9, 0x90, 0x4c, 0x98,
+	0xc8, 0x72, 0xae, 0xf7, 0xe8, 0xaa, 0x24, 0x03, 0xa2, 0xe8, 0x94, 0x14, 0xf2, 0x07, 0x3f, 0xab,
+	0x70, 0xab, 0x9d, 0xa7, 0x0d, 0x17, 0x59, 0xd1, 0x2e, 0x54, 0x86, 0x42, 0x2a, 0x89, 0x0d, 0xdf,
+	0xaa, 0xbb, 0x67, 0xd6, 0x65, 0xd3, 0x8c, 0x73, 0x04, 0x3d, 0x00, 0x97, 0xf4, 0xfb, 0x19, 0x95,
+	0x92, 0x4a, 0x6c, 0x2e, 0x8e, 0xe3, 0x15, 0x80, 0x4e, 0xa1, 0x32, 0x12, 0x99, 0x92, 0xd8, 0xf2,
+	0xad, 0xfa, 0xd6, 0xd1, 0x7e, 0xf0, 0xd7, 0xc2, 0x83, 0xf7, 0x22, 0x53, 0x85, 0xb2, 0xa6, 0xa0,
+	0x16, 0x38, 0x5c, 0xf4, 0x88, 0x62, 0x22, 0xc5, 0x9b, 0xbe, 0x51, 0xbf, 0x7d, 0x74, 0xf8, 0x0f,
+	0xfa, 0x7a, 0xbd, 0x41, 0xab, 0xe0, 0xc5, 0x4b, 0x05, 0xf4, 0x11, 0x20, 0xa3, 0x52, 0xf0, 0xb1,
+	0xd6, 0xab, 0x68, 0xbd, 0xa3, 0xeb, 0xea, 0xc5, 0x4b, 0x66, 0x5e, 0xe1, 0x9a, 0x14, 0x8a, 0xc0,
+	0xa5, 0x69, 0x7f, 0x24, 0x58, 0xaa, 0x24, 0xb6, 0x75, 0x9b, 0xd7, 0xae, 0x33, 0x2c, 0x88, 0xf1,
+	0x4a, 0x02, 0xdd, 0x07, 0x97, 0x7e, 0x5f, 0x4c, 0x20, 0x51, 0x02, 0x57, 0xf5, 0x40, 0x9d, 0x1c,
+	0xe8, 0x08, 0xf4, 0x04, 0x76, 0xe4, 0xb8, 0xfb, 0x95, 0xf6, 0x54, 0x42, 0xb8, 0x4a, 0x52, 0xf2,
+	0x8d, 0x4a, 0xec, 0xe8, 0x4b, 0x77, 0x8a, 0x83, 0x26, 0x57, 0xd1, 0x02, 0xf6, 0x7e, 0x58, 0xe0,
+	0x94, 0x09, 0xd0, 0x43, 0xa8, 0x16, 0xae, 0x60, 0xc3, 0x37, 0x4a, 0x0f, 0x4b, 0x0c, 0x7d, 0x28,
+	0x7d, 0x32, 0x75, 0x03, 0x2f, 0x6e, 0xda, 0x80, 0x76, 0x4f, 0x6a, 0xac, 0xb4, 0xaf, 0x03, 0x36,
+	0x27, 0x5d, 0xca, 0x4b, 0xef, 0x5f, 0xde, 0x58, 0xb3, 0xa5, 0xe9, 0xb9, 0x68, 0xa1, 0x85, 0x30,
+	0x54, 0x0b, 0x01, 0xbd, 0x13, 0x6e, 0x5c, 0x86, 0xc8, 0xcb, 0xd7, 0x85, 0x33, 0x35, 0xd3, 0xf6,
+	0xba, 0xf1, 0x32, 0x46, 0xf7, 0xc0, 0x9e, 0x52, 0x36, 0x18, 0x2a, 0x6c, 0xfb, 0x46, 0x7d, 0x3b,
+	0x2e, 0x22, 0xef, 0x04, 0x60, 0x55, 0x38, 0xaa, 0x81, 0x75, 0x41, 0x67, 0xf9, 0x7c, 0xe2, 0xc5,
+	0x27, 0xba, 0x0b, 0x95, 0x09, 0xe1, 0x63, 0x8a, 0x4d, 0x4d, 0xcb, 0x83, 0x53, 0xf3, 0xc4, 0xf0,
+	0x9e, 0xc3, 0xd6, 0x5a, 0x79, 0xff, 0xa3, 0xba, 0x6b, 0xd4, 0x83, 0x43, 0x70, 0xca, 0xfd, 0x44,
+	0x3b, 0xb0, 0xfd, 0x36, 0x6c, 0xbf, 0x49, 0xc2, 0x4f, 0x9d, 0x30, 0x8e, 0x9a, 0xad, 0xda, 0xc6,
+	0x12, 0x3a, 0x8f, 0x0a, 0xc8, 0x38, 0x78, 0x0a, 0xb0, 0xda, 0x40, 0xe4, 0xc0, 0x66, 0xf4, 0x2e,
+	0x0a, 0x6b, 0x1b, 0x08, 0xc0, 0x6e, 0x77, 0x9a, 0x9d, 0xf3, 0x57, 0x35, 0x03, 0x55, 0xc1, 0x7a,
+	0x1d, 0xb5, 0x6b, 0xe6, 0x59, 0xf0, 0x6b, 0xbe, 0x67, 0xfc, 0x9e, 0xef, 0x19, 0x97, 0xf3, 0x3d,
+	0xe3, 0xb3, 0x9f, 0x0f, 0x9d, 0x09, 0xfd, 0x43, 0xb8, 0xe2, 0xe9, 0x77, 0x6d, 0xfd, 0xe6, 0x8f,
+	0xff, 0x04, 0x00, 0x00, 0xff, 0xff, 0x56, 0x61, 0xed, 0x81, 0x7d, 0x04, 0x00, 0x00,
 }
 
 func (m *ServiceEntry) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -767,114 +783,100 @@ func (m *ServiceEntry) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *ServiceEntry) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ServiceEntry) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Hosts) > 0 {
-		for _, s := range m.Hosts {
-			dAtA[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	if len(m.Addresses) > 0 {
-		for _, s := range m.Addresses {
-			dAtA[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if len(m.Ports) > 0 {
-		for _, msg := range m.Ports {
-			dAtA[i] = 0x1a
-			i++
-			i = encodeVarintServiceEntry(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if m.Location != 0 {
-		dAtA[i] = 0x20
-		i++
-		i = encodeVarintServiceEntry(dAtA, i, uint64(m.Location))
-	}
-	if m.Resolution != 0 {
-		dAtA[i] = 0x28
-		i++
-		i = encodeVarintServiceEntry(dAtA, i, uint64(m.Resolution))
-	}
-	if len(m.Endpoints) > 0 {
-		for _, msg := range m.Endpoints {
-			dAtA[i] = 0x32
-			i++
-			i = encodeVarintServiceEntry(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
+	if len(m.SubjectAltNames) > 0 {
+		for iNdEx := len(m.SubjectAltNames) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SubjectAltNames[iNdEx])
+			copy(dAtA[i:], m.SubjectAltNames[iNdEx])
+			i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.SubjectAltNames[iNdEx])))
+			i--
+			dAtA[i] = 0x42
 		}
 	}
 	if len(m.ExportTo) > 0 {
-		for _, s := range m.ExportTo {
+		for iNdEx := len(m.ExportTo) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ExportTo[iNdEx])
+			copy(dAtA[i:], m.ExportTo[iNdEx])
+			i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.ExportTo[iNdEx])))
+			i--
 			dAtA[i] = 0x3a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
 		}
 	}
-	if len(m.SubjectAltNames) > 0 {
-		for _, s := range m.SubjectAltNames {
-			dAtA[i] = 0x42
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
+	if len(m.Endpoints) > 0 {
+		for iNdEx := len(m.Endpoints) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Endpoints[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintServiceEntry(dAtA, i, uint64(size))
 			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
+			i--
+			dAtA[i] = 0x32
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if m.Resolution != 0 {
+		i = encodeVarintServiceEntry(dAtA, i, uint64(m.Resolution))
+		i--
+		dAtA[i] = 0x28
 	}
-	return i, nil
+	if m.Location != 0 {
+		i = encodeVarintServiceEntry(dAtA, i, uint64(m.Location))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.Ports) > 0 {
+		for iNdEx := len(m.Ports) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Ports[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintServiceEntry(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if len(m.Addresses) > 0 {
+		for iNdEx := len(m.Addresses) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Addresses[iNdEx])
+			copy(dAtA[i:], m.Addresses[iNdEx])
+			i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.Addresses[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.Hosts) > 0 {
+		for iNdEx := len(m.Hosts) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Hosts[iNdEx])
+			copy(dAtA[i:], m.Hosts[iNdEx])
+			i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.Hosts[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *ServiceEntry_Endpoint) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -882,80 +884,94 @@ func (m *ServiceEntry_Endpoint) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *ServiceEntry_Endpoint) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ServiceEntry_Endpoint) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Address) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.Address)))
-		i += copy(dAtA[i:], m.Address)
-	}
-	if len(m.Ports) > 0 {
-		for k, _ := range m.Ports {
-			dAtA[i] = 0x12
-			i++
-			v := m.Ports[k]
-			mapSize := 1 + len(k) + sovServiceEntry(uint64(len(k))) + 1 + sovServiceEntry(uint64(v))
-			i = encodeVarintServiceEntry(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintServiceEntry(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x10
-			i++
-			i = encodeVarintServiceEntry(dAtA, i, uint64(v))
-		}
-	}
-	if len(m.Labels) > 0 {
-		for k, _ := range m.Labels {
-			dAtA[i] = 0x1a
-			i++
-			v := m.Labels[k]
-			mapSize := 1 + len(k) + sovServiceEntry(uint64(len(k))) + 1 + len(v) + sovServiceEntry(uint64(len(v)))
-			i = encodeVarintServiceEntry(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintServiceEntry(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
-			i = encodeVarintServiceEntry(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
-		}
-	}
-	if len(m.Network) > 0 {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.Network)))
-		i += copy(dAtA[i:], m.Network)
-	}
-	if len(m.Locality) > 0 {
-		dAtA[i] = 0x2a
-		i++
-		i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.Locality)))
-		i += copy(dAtA[i:], m.Locality)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if m.Weight != 0 {
-		dAtA[i] = 0x30
-		i++
 		i = encodeVarintServiceEntry(dAtA, i, uint64(m.Weight))
+		i--
+		dAtA[i] = 0x30
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Locality) > 0 {
+		i -= len(m.Locality)
+		copy(dAtA[i:], m.Locality)
+		i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.Locality)))
+		i--
+		dAtA[i] = 0x2a
 	}
-	return i, nil
+	if len(m.Network) > 0 {
+		i -= len(m.Network)
+		copy(dAtA[i:], m.Network)
+		i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.Network)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Labels) > 0 {
+		for k := range m.Labels {
+			v := m.Labels[k]
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
+			i = encodeVarintServiceEntry(dAtA, i, uint64(len(v)))
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintServiceEntry(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintServiceEntry(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if len(m.Ports) > 0 {
+		for k := range m.Ports {
+			v := m.Ports[k]
+			baseI := i
+			i = encodeVarintServiceEntry(dAtA, i, uint64(v))
+			i--
+			dAtA[i] = 0x10
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintServiceEntry(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintServiceEntry(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.Address) > 0 {
+		i -= len(m.Address)
+		copy(dAtA[i:], m.Address)
+		i = encodeVarintServiceEntry(dAtA, i, uint64(len(m.Address)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func encodeVarintServiceEntry(dAtA []byte, offset int, v uint64) int {
+	offset -= sovServiceEntry(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *ServiceEntry) Size() (n int) {
 	if m == nil {
@@ -1055,14 +1071,7 @@ func (m *ServiceEntry_Endpoint) Size() (n int) {
 }
 
 func sovServiceEntry(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
+	return (math_bits.Len64(x|1) + 6) / 7
 }
 func sozServiceEntry(x uint64) (n int) {
 	return sovServiceEntry(uint64((x << 1) ^ uint64((int64(x) >> 63))))

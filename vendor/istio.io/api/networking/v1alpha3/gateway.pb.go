@@ -35,7 +35,7 @@
 //       httpsRedirect: true # sends 301 redirect for http requests
 //   - port:
 //       number: 443
-//       name: https
+//       name: https-443
 //       protocol: HTTPS
 //     hosts:
 //     - uk.bookinfo.com
@@ -46,7 +46,7 @@
 //       privateKey: /etc/certs/privatekey.pem
 //   - port:
 //       number: 9443
-//       name: https
+//       name: https-9443
 //       protocol: HTTPS
 //     hosts:
 //     - "bookinfo-namespace/*.bookinfo.com"
@@ -100,19 +100,19 @@
 //   - match:
 //     - headers:
 //         cookie:
-//           user: dev-123
+//           exact: "user=dev-123"
 //     route:
 //     - destination:
 //         port:
 //           number: 7777
 //         host: reviews.qa.svc.cluster.local
 //   - match:
-//       uri:
+//     - uri:
 //         prefix: /reviews/
 //     route:
 //     - destination:
 //         port:
-//           number: 9080 # can be omitted if its the only port for reviews
+//           number: 9080 # can be omitted if it's the only port for reviews
 //         host: reviews.prod.svc.cluster.local
 //       weight: 80
 //     - destination:
@@ -179,7 +179,9 @@ import (
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
+	_ "istio.io/gogo-genproto/googleapis/google/api"
 	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -191,7 +193,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // TLS modes enforced by the proxy
 type Server_TLSOptions_TLSmode int32
@@ -203,8 +205,8 @@ const (
 	Server_TLSOptions_PASSTHROUGH Server_TLSOptions_TLSmode = 0
 	// Secure connections with standard TLS semantics.
 	Server_TLSOptions_SIMPLE Server_TLSOptions_TLSmode = 1
-	// Secure connections to the upstream using mutual TLS by presenting
-	// client certificates for authentication.
+	// Secure connections to the downstream using mutual TLS by presenting
+	// server certificates for authentication.
 	Server_TLSOptions_MUTUAL Server_TLSOptions_TLSmode = 2
 	// Similar to the passthrough mode, except servers with this TLS mode
 	// do not require an associated VirtualService to map from the SNI
@@ -217,6 +219,13 @@ const (
 	// their respective endpoints. Use of this mode assumes that both the
 	// source and the destination are using Istio mTLS to secure traffic.
 	Server_TLSOptions_AUTO_PASSTHROUGH Server_TLSOptions_TLSmode = 3
+	// Secure connections from the downstream using mutual TLS by presenting
+	// server certificates for authentication.
+	// Compared to Mutual mode, this mode uses certificates, representing
+	// gateway workload identity, generated automatically by Istio for
+	// mTLS authentication. When this mode is used, all other fields in
+	// `TLSOptions` should be empty.
+	Server_TLSOptions_ISTIO_MUTUAL Server_TLSOptions_TLSmode = 4
 )
 
 var Server_TLSOptions_TLSmode_name = map[int32]string{
@@ -224,6 +233,7 @@ var Server_TLSOptions_TLSmode_name = map[int32]string{
 	1: "SIMPLE",
 	2: "MUTUAL",
 	3: "AUTO_PASSTHROUGH",
+	4: "ISTIO_MUTUAL",
 }
 
 var Server_TLSOptions_TLSmode_value = map[string]int32{
@@ -231,6 +241,7 @@ var Server_TLSOptions_TLSmode_value = map[string]int32{
 	"SIMPLE":           1,
 	"MUTUAL":           2,
 	"AUTO_PASSTHROUGH": 3,
+	"ISTIO_MUTUAL":     4,
 }
 
 func (x Server_TLSOptions_TLSmode) String() string {
@@ -281,14 +292,23 @@ func (Server_TLSOptions_TLSProtocol) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_067d98d02f84cc0b, []int{1, 0, 1}
 }
 
+// Gateway describes a load balancer operating at the edge of the mesh
+// receiving incoming or outgoing HTTP/TCP connections.
+//
+// <!-- go code generation tags
+// +kubetype-gen
+// +kubetype-gen:groupVersion=networking.istio.io/v1alpha3
+// +genclient
+// +k8s:deepcopy-gen=true
+// -->
 type Gateway struct {
-	// REQUIRED: A list of server specifications.
+	// A list of server specifications.
 	Servers []*Server `protobuf:"bytes,1,rep,name=servers,proto3" json:"servers,omitempty"`
-	// REQUIRED: One or more labels that indicate a specific set of pods/VMs
+	// One or more labels that indicate a specific set of pods/VMs
 	// on which this gateway configuration should be applied. The scope of
 	// label search is restricted to the configuration namespace in which the
 	// the resource is present. In other words, the Gateway resource must
-	// reside in the same namespace as the gateway workload.
+	// reside in the same namespace as the gateway workload instance.
 	Selector             map[string]string `protobuf:"bytes,2,rep,name=selector,proto3" json:"selector,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
@@ -309,7 +329,7 @@ func (m *Gateway) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Gateway.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -404,7 +424,7 @@ func (m *Gateway) GetSelector() map[string]string {
 //       privateKey: /etc/certs/privatekey.pem
 // ```
 type Server struct {
-	// REQUIRED: The Port on which the proxy should listen for incoming
+	// The Port on which the proxy should listen for incoming
 	// connections.
 	Port *Port `protobuf:"bytes,1,opt,name=port,proto3" json:"port,omitempty"`
 	// $hide_from_docs
@@ -413,16 +433,21 @@ type Server struct {
 	// (Linux abstract namespace). When using Unix domain sockets, the port
 	// number should be 0.
 	Bind string `protobuf:"bytes,4,opt,name=bind,proto3" json:"bind,omitempty"`
-	// REQUIRED. One or more hosts exposed by this gateway.
+	// One or more hosts exposed by this gateway.
 	// While typically applicable to
 	// HTTP services, it can also be used for TCP services using TLS with SNI.
 	// A host is specified as a `dnsName` with an optional `namespace/` prefix.
 	// The `dnsName` should be specified using FQDN format, optionally including
 	// a wildcard character in the left-most component (e.g., `prod/*.example.com`).
 	// Set the `dnsName` to `*` to select all `VirtualService` hosts from the
-	// specified namespace (e.g.,`prod/*`). If no `namespace/` is specified,
-	// the `VirtualService` hosts will be selected from any available namespace.
-	// Any associated `DestinationRule` in the same namespace will also be used.
+	// specified namespace (e.g.,`prod/*`).
+	//
+	// The `namespace` can be set to `*` or `.`, representing any or the current
+	// namespace, respectively. For example, `*/foo.example.com` selects the
+	// service from any available namespace while `./foo.example.com` only selects
+	// the service from the namespace of the sidecar. The default, if no `namespace/`
+	// is specified, is `*/`, that is, select services from any namespace.
+	// Any associated `DestinationRule` in the selected namespace will also be used.
 	//
 	// A `VirtualService` must be bound to the gateway and must have one or
 	// more hosts that match the hosts specified in a server. The match
@@ -465,7 +490,7 @@ func (m *Server) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Server.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -545,18 +570,31 @@ type Server_TLSOptions struct {
 	// as Kubernetes secrets, will be configured to retrieve the
 	// serverCertificate and the privateKey using credentialName, instead
 	// of using the file system paths specified above. If using mutual TLS,
-	// gateway workloads will retrieve the CaCertificates using
+	// gateway workload instances will retrieve the CaCertificates using
 	// credentialName-cacert. The semantics of the name are platform
 	// dependent.  In Kubernetes, the default Istio supplied credential
 	// server expects the credentialName to match the name of the
 	// Kubernetes secret that holds the server certificate, the private
 	// key, and the CA certificate (if using mutual TLS). Set the
-	// ISTIO_META_USER_SDS metadata variable in the gateway's proxy to
+	// `ISTIO_META_USER_SDS` metadata variable in the gateway's proxy to
 	// enable the dynamic credential fetching feature.
 	CredentialName string `protobuf:"bytes,10,opt,name=credential_name,json=credentialName,proto3" json:"credential_name,omitempty"`
 	// A list of alternate names to verify the subject identity in the
 	// certificate presented by the client.
 	SubjectAltNames []string `protobuf:"bytes,6,rep,name=subject_alt_names,json=subjectAltNames,proto3" json:"subject_alt_names,omitempty"`
+	// An optional list of base64-encoded SHA-256 hashes of the SKPIs of
+	// authorized client certificates.
+	// Note: When both verify_certificate_hash and verify_certificate_spki
+	// are specified, a hash matching either value will result in the
+	// certificate being accepted.
+	VerifyCertificateSpki []string `protobuf:"bytes,11,rep,name=verify_certificate_spki,json=verifyCertificateSpki,proto3" json:"verify_certificate_spki,omitempty"`
+	// An optional list of hex-encoded SHA-256 hashes of the
+	// authorized client certificates. Both simple and colon separated
+	// formats are acceptable.
+	// Note: When both verify_certificate_hash and verify_certificate_spki
+	// are specified, a hash matching either value will result in the
+	// certificate being accepted.
+	VerifyCertificateHash []string `protobuf:"bytes,12,rep,name=verify_certificate_hash,json=verifyCertificateHash,proto3" json:"verify_certificate_hash,omitempty"`
 	// Optional: Minimum TLS protocol version.
 	MinProtocolVersion Server_TLSOptions_TLSProtocol `protobuf:"varint,7,opt,name=min_protocol_version,json=minProtocolVersion,proto3,enum=istio.networking.v1alpha3.Server_TLSOptions_TLSProtocol" json:"min_protocol_version,omitempty"`
 	// Optional: Maximum TLS protocol version.
@@ -583,7 +621,7 @@ func (m *Server_TLSOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return xxx_messageInfo_Server_TLSOptions.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -651,6 +689,20 @@ func (m *Server_TLSOptions) GetSubjectAltNames() []string {
 	return nil
 }
 
+func (m *Server_TLSOptions) GetVerifyCertificateSpki() []string {
+	if m != nil {
+		return m.VerifyCertificateSpki
+	}
+	return nil
+}
+
+func (m *Server_TLSOptions) GetVerifyCertificateHash() []string {
+	if m != nil {
+		return m.VerifyCertificateHash
+	}
+	return nil
+}
+
 func (m *Server_TLSOptions) GetMinProtocolVersion() Server_TLSOptions_TLSProtocol {
 	if m != nil {
 		return m.MinProtocolVersion
@@ -674,9 +726,9 @@ func (m *Server_TLSOptions) GetCipherSuites() []string {
 
 // Port describes the properties of a specific port of a service.
 type Port struct {
-	// REQUIRED: A valid non-negative integer port number.
+	// A valid non-negative integer port number.
 	Number uint32 `protobuf:"varint,1,opt,name=number,proto3" json:"number,omitempty"`
-	// REQUIRED: The protocol exposed on the port.
+	// The protocol exposed on the port.
 	// MUST BE one of HTTP|HTTPS|GRPC|HTTP2|MONGO|TCP|TLS.
 	// TLS implies the connection will be routed based on the SNI header to
 	// the destination without terminating the TLS connection.
@@ -702,7 +754,7 @@ func (m *Port) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Port.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
+		n, err := m.MarshalToSizedBuffer(b)
 		if err != nil {
 			return nil, err
 		}
@@ -755,56 +807,61 @@ func init() {
 func init() { proto.RegisterFile("networking/v1alpha3/gateway.proto", fileDescriptor_067d98d02f84cc0b) }
 
 var fileDescriptor_067d98d02f84cc0b = []byte{
-	// 674 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0x5d, 0x4f, 0x1a, 0x4d,
-	0x14, 0x76, 0x01, 0xf9, 0x38, 0x88, 0xac, 0x13, 0xf3, 0x66, 0x5f, 0x2f, 0xfc, 0xa0, 0x69, 0x6a,
-	0x9b, 0x76, 0x51, 0xe8, 0x85, 0xa9, 0x49, 0x13, 0xda, 0x18, 0x69, 0x8a, 0x42, 0x76, 0xc1, 0x8b,
-	0xde, 0x6c, 0x86, 0x65, 0x94, 0xd1, 0x65, 0x67, 0x33, 0x33, 0xa0, 0xfc, 0xb3, 0xfe, 0x84, 0x5e,
-	0xb6, 0xff, 0xa0, 0xb1, 0x7f, 0xa4, 0xd9, 0xd9, 0x41, 0xe8, 0x97, 0x8d, 0xe9, 0xdd, 0x39, 0xcf,
-	0x3c, 0xcf, 0x73, 0xe6, 0x9c, 0xf9, 0x80, 0x9d, 0x90, 0xc8, 0x6b, 0xc6, 0xaf, 0x68, 0x78, 0x51,
-	0x9d, 0xec, 0xe3, 0x20, 0x1a, 0xe2, 0x7a, 0xf5, 0x02, 0x4b, 0x72, 0x8d, 0xa7, 0x76, 0xc4, 0x99,
-	0x64, 0xe8, 0x7f, 0x2a, 0x24, 0x65, 0xf6, 0x9c, 0x68, 0xcf, 0x88, 0x95, 0x2f, 0x06, 0xe4, 0x8e,
-	0x13, 0x32, 0x3a, 0x84, 0x9c, 0x20, 0x7c, 0x42, 0xb8, 0xb0, 0x8c, 0xed, 0xf4, 0x6e, 0xb1, 0xb6,
-	0x63, 0xff, 0x51, 0x68, 0xbb, 0x8a, 0xe9, 0xcc, 0x14, 0xa8, 0x05, 0x79, 0x41, 0x02, 0xe2, 0x4b,
-	0xc6, 0xad, 0x94, 0x52, 0xef, 0xdd, 0xa3, 0xd6, 0x25, 0x6d, 0x57, 0x4b, 0x8e, 0x42, 0xc9, 0xa7,
-	0xce, 0x9d, 0xc3, 0xc6, 0x21, 0x94, 0x7e, 0x58, 0x42, 0x26, 0xa4, 0xaf, 0xc8, 0xd4, 0x32, 0xb6,
-	0x8d, 0xdd, 0x82, 0x13, 0x87, 0x68, 0x1d, 0x96, 0x27, 0x38, 0x18, 0x13, 0x2b, 0xa5, 0xb0, 0x24,
-	0x79, 0x95, 0x3a, 0x30, 0x2a, 0x1f, 0x73, 0x90, 0x4d, 0xb6, 0x87, 0xea, 0x90, 0x89, 0x18, 0x97,
-	0x4a, 0x57, 0xac, 0x6d, 0xdd, 0xb3, 0xa3, 0x0e, 0xe3, 0xd2, 0x51, 0x64, 0x84, 0x20, 0xd3, 0xa7,
-	0xe1, 0xc0, 0xca, 0x28, 0x63, 0x15, 0xc7, 0xd5, 0x86, 0x4c, 0x48, 0xa1, 0x7a, 0x2b, 0x38, 0x49,
-	0x82, 0x5e, 0x43, 0x5a, 0x06, 0xc2, 0x4a, 0x2b, 0xf7, 0xe7, 0x7f, 0x9d, 0x96, 0xdd, 0x6d, 0xb9,
-	0xed, 0x48, 0x52, 0x16, 0x0a, 0x27, 0x16, 0xa2, 0xa7, 0x60, 0x0e, 0xc8, 0x39, 0x1e, 0x07, 0xd2,
-	0x23, 0xe1, 0x20, 0x62, 0x34, 0x94, 0xd6, 0xb2, 0xaa, 0x5a, 0xd6, 0xf8, 0x91, 0x86, 0x37, 0xbe,
-	0x2d, 0x03, 0xcc, 0xe5, 0xe8, 0x31, 0xac, 0x0e, 0xa5, 0x8c, 0x84, 0xc7, 0xc9, 0x80, 0x72, 0xe2,
-	0x27, 0x2d, 0xe6, 0x9d, 0x92, 0x42, 0x1d, 0x0d, 0xa2, 0x26, 0x64, 0x46, 0x6c, 0x90, 0xcc, 0x68,
-	0xb5, 0xf6, 0xf2, 0x21, 0x3b, 0x8c, 0xc3, 0x58, 0xeb, 0x28, 0x07, 0xf4, 0x02, 0x50, 0x72, 0xd4,
-	0x9e, 0x4f, 0xb8, 0xa4, 0xe7, 0xd4, 0xc7, 0x92, 0xa8, 0xce, 0x0b, 0xce, 0x5a, 0xb2, 0xf2, 0x76,
-	0xbe, 0x80, 0xb6, 0xa0, 0x18, 0x71, 0x3a, 0xc1, 0x92, 0x78, 0xf1, 0xb9, 0x25, 0xa3, 0x04, 0x0d,
-	0xbd, 0x27, 0x53, 0xf4, 0x04, 0xca, 0x3e, 0x5e, 0xf4, 0x12, 0xba, 0xf3, 0x55, 0x1f, 0x2f, 0x18,
-	0x09, 0x45, 0xe4, 0x64, 0x40, 0x42, 0x49, 0x71, 0xe0, 0x85, 0x78, 0x44, 0x2c, 0xd0, 0xc4, 0x3b,
-	0xf8, 0x14, 0x8f, 0x08, 0x7a, 0x06, 0x6b, 0x62, 0xdc, 0xbf, 0x24, 0xbe, 0xf4, 0x70, 0x20, 0x15,
-	0x53, 0x58, 0x59, 0x75, 0x5c, 0x65, 0xbd, 0xd0, 0x08, 0x64, 0x4c, 0x15, 0xe8, 0x12, 0xd6, 0x47,
-	0x34, 0xf4, 0xd4, 0xf3, 0xf0, 0x59, 0xe0, 0xc5, 0x57, 0x98, 0xb2, 0xd0, 0xca, 0xa9, 0x39, 0x1d,
-	0x3c, 0x74, 0x4e, 0x1d, 0xed, 0xe3, 0xa0, 0x11, 0x0d, 0x67, 0xc9, 0x59, 0xe2, 0xa9, 0x6a, 0xe1,
-	0x9b, 0x5f, 0x6b, 0xe5, 0xff, 0xb9, 0x16, 0xbe, 0xf9, 0xb9, 0xd6, 0x23, 0x28, 0xf9, 0x34, 0x1a,
-	0x12, 0xee, 0x89, 0x31, 0x8d, 0x67, 0x5a, 0x50, 0xfd, 0xaf, 0x24, 0xa0, 0xab, 0xb0, 0x4a, 0x13,
-	0x72, 0xfa, 0x6c, 0x51, 0x19, 0x8a, 0x9d, 0x86, 0xeb, 0x76, 0x9b, 0x4e, 0xbb, 0x77, 0xdc, 0x34,
-	0x97, 0x10, 0x40, 0xd6, 0x7d, 0x77, 0xd2, 0x69, 0x1d, 0x99, 0x46, 0x1c, 0x9f, 0xf4, 0xba, 0xbd,
-	0x46, 0xcb, 0x4c, 0xa1, 0x75, 0x30, 0x1b, 0xbd, 0x6e, 0xdb, 0x5b, 0x64, 0xa7, 0x2b, 0x6d, 0x28,
-	0x2e, 0xec, 0x08, 0xad, 0x40, 0xbe, 0xdb, 0x72, 0xbd, 0x98, 0x68, 0x2e, 0xa1, 0xa2, 0x2a, 0x73,
-	0xb6, 0xef, 0xed, 0x99, 0xc6, 0x3c, 0xd9, 0x37, 0x53, 0xf3, 0xa4, 0x66, 0xa6, 0xe7, 0x49, 0xdd,
-	0xcc, 0x54, 0x4e, 0x21, 0x13, 0x3f, 0x44, 0xf4, 0x1f, 0x64, 0xc3, 0xf1, 0xa8, 0x4f, 0xb8, 0xba,
-	0xd6, 0x25, 0x47, 0x67, 0x68, 0x03, 0xf2, 0xb3, 0x39, 0xea, 0x77, 0x7f, 0x97, 0xc7, 0xcf, 0x56,
-	0xdd, 0x8e, 0xe4, 0x4e, 0xaa, 0xf8, 0x8d, 0xfd, 0xe9, 0x76, 0xd3, 0xf8, 0x7c, 0xbb, 0x69, 0x7c,
-	0xbd, 0xdd, 0x34, 0x3e, 0x6c, 0x27, 0xa3, 0xa6, 0xac, 0x8a, 0x23, 0x5a, 0xfd, 0xcd, 0xbf, 0xd9,
-	0xcf, 0x2a, 0xb7, 0xfa, 0xf7, 0x00, 0x00, 0x00, 0xff, 0xff, 0xd0, 0x11, 0xfe, 0x50, 0x55, 0x05,
-	0x00, 0x00,
+	// 762 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x54, 0x5d, 0x6f, 0x22, 0x37,
+	0x14, 0xdd, 0x01, 0xc2, 0xc7, 0x05, 0xc2, 0xac, 0x95, 0xaa, 0xb3, 0xa9, 0x14, 0xb2, 0x54, 0x55,
+	0xb7, 0x55, 0x3b, 0x6c, 0x48, 0x55, 0x45, 0xad, 0x54, 0x95, 0xad, 0xa2, 0x10, 0x95, 0x14, 0x3a,
+	0x03, 0x51, 0x95, 0x97, 0x91, 0x19, 0x0c, 0xe3, 0x30, 0x8c, 0x47, 0xb6, 0x21, 0xe1, 0xff, 0xf5,
+	0xa1, 0x8f, 0x7d, 0xef, 0x4b, 0x14, 0xa9, 0xff, 0xa3, 0x1a, 0x7b, 0x08, 0xf4, 0x23, 0xa9, 0xa2,
+	0x7d, 0xb3, 0x8f, 0xcf, 0x39, 0xf7, 0xda, 0xd7, 0xf7, 0xc2, 0xeb, 0x88, 0xc8, 0x1b, 0xc6, 0x67,
+	0x34, 0x9a, 0x36, 0x97, 0x47, 0x38, 0x8c, 0x03, 0x7c, 0xdc, 0x9c, 0x62, 0x49, 0x6e, 0xf0, 0xca,
+	0x8e, 0x39, 0x93, 0x0c, 0xbd, 0xa2, 0x42, 0x52, 0x66, 0x6f, 0x88, 0xf6, 0x9a, 0xb8, 0x5f, 0x9f,
+	0x32, 0x36, 0x0d, 0x49, 0x13, 0xc7, 0xb4, 0x39, 0xa1, 0x24, 0x1c, 0x7b, 0x23, 0x12, 0xe0, 0x25,
+	0x65, 0x5c, 0x6b, 0x1b, 0x7f, 0x18, 0x50, 0x38, 0xd3, 0x6e, 0xe8, 0x7b, 0x28, 0x08, 0xc2, 0x97,
+	0x84, 0x0b, 0xcb, 0x38, 0xcc, 0xbe, 0x29, 0xb7, 0x5e, 0xdb, 0x8f, 0x3a, 0xdb, 0xae, 0x62, 0xbe,
+	0xcb, 0xde, 0xb5, 0x33, 0xce, 0x5a, 0x86, 0x7e, 0x86, 0xa2, 0x20, 0x21, 0xf1, 0x25, 0xe3, 0x56,
+	0x46, 0x59, 0xbc, 0x7d, 0xc2, 0x22, 0x8d, 0x6b, 0xbb, 0xa9, 0xe4, 0x34, 0x92, 0x7c, 0xa5, 0x1d,
+	0x1f, 0x6c, 0xf6, 0xbf, 0x85, 0xea, 0xdf, 0xce, 0x91, 0x09, 0xd9, 0x19, 0x59, 0x59, 0xc6, 0xa1,
+	0xf1, 0xa6, 0xe4, 0x24, 0x4b, 0xb4, 0x07, 0x3b, 0x4b, 0x1c, 0x2e, 0x88, 0x95, 0x51, 0x98, 0xde,
+	0x7c, 0x93, 0x39, 0x31, 0x1a, 0xbf, 0x16, 0x21, 0xaf, 0x13, 0x45, 0x27, 0x90, 0x8b, 0x19, 0x97,
+	0x4a, 0x57, 0x6e, 0xd5, 0x9f, 0x48, 0xab, 0xcf, 0xb8, 0xd4, 0x59, 0x28, 0x05, 0x42, 0x90, 0x1b,
+	0xd1, 0x68, 0x6c, 0xe5, 0x94, 0xbb, 0x5a, 0xa3, 0x57, 0xb0, 0x13, 0x30, 0x21, 0x85, 0xba, 0x65,
+	0x49, 0xb3, 0x35, 0x82, 0xbe, 0x83, 0xac, 0x0c, 0x85, 0x95, 0x55, 0x71, 0xbe, 0xf8, 0xdf, 0x17,
+	0xb4, 0x07, 0x5d, 0xb7, 0x17, 0x4b, 0xca, 0x22, 0xe1, 0x24, 0x42, 0xf4, 0x19, 0x98, 0x63, 0x32,
+	0xc1, 0x8b, 0x50, 0x7a, 0x24, 0x1a, 0xc7, 0x8c, 0x46, 0xd2, 0xda, 0x51, 0xa1, 0x6b, 0x29, 0x7e,
+	0x9a, 0xc2, 0xfb, 0x7f, 0xe6, 0x01, 0x36, 0x72, 0xf4, 0x09, 0xec, 0x06, 0x52, 0xc6, 0xc2, 0xe3,
+	0x64, 0x4c, 0x39, 0xf1, 0xf5, 0x65, 0x8b, 0x4e, 0x55, 0xa1, 0x4e, 0x0a, 0xa2, 0x0e, 0xe4, 0xe6,
+	0x6c, 0xac, 0x5f, 0x6b, 0xb7, 0xf5, 0xd5, 0x73, 0x32, 0x4c, 0x96, 0x89, 0xd6, 0x51, 0x0e, 0xe8,
+	0x4b, 0x40, 0xba, 0xf2, 0x9e, 0x4f, 0xb8, 0xa4, 0x13, 0xea, 0x63, 0x49, 0xd4, 0xcd, 0x4b, 0xce,
+	0x4b, 0x7d, 0xf2, 0xc3, 0xe6, 0x00, 0xd5, 0xa1, 0x1c, 0x73, 0xba, 0xc4, 0x92, 0x78, 0x49, 0x05,
+	0xf5, 0x7b, 0x42, 0x0a, 0xfd, 0x48, 0x56, 0xe8, 0x53, 0xa8, 0xf9, 0x78, 0xdb, 0x4b, 0xa4, 0x37,
+	0xdf, 0xf5, 0xf1, 0x96, 0x91, 0x50, 0x44, 0x4e, 0xc6, 0x24, 0x92, 0x14, 0x87, 0x5e, 0x84, 0xe7,
+	0xc4, 0x82, 0x94, 0xf8, 0x00, 0xff, 0x84, 0xe7, 0x04, 0x7d, 0x0e, 0x2f, 0xc5, 0x62, 0x74, 0x4d,
+	0x7c, 0xe9, 0xe1, 0x50, 0x2a, 0xa6, 0xb0, 0xf2, 0x49, 0xcd, 0x9c, 0x5a, 0x7a, 0xd0, 0x0e, 0x65,
+	0x42, 0x15, 0xe8, 0x6b, 0xf8, 0x70, 0x49, 0x38, 0x9d, 0xac, 0xb6, 0x33, 0xf0, 0x44, 0x3c, 0xa3,
+	0x56, 0x59, 0x29, 0x3e, 0xd0, 0xc7, 0x5b, 0x99, 0xb8, 0xf1, 0x8c, 0x3e, 0xa2, 0x0b, 0xb0, 0x08,
+	0xac, 0xca, 0x23, 0xba, 0x0e, 0x16, 0x01, 0xba, 0x86, 0xbd, 0x39, 0x8d, 0x3c, 0xd5, 0x87, 0x3e,
+	0x0b, 0xbd, 0xa4, 0x83, 0x28, 0x8b, 0xac, 0x82, 0xaa, 0xcb, 0xc9, 0x73, 0xeb, 0xd2, 0x4f, 0x7d,
+	0x1c, 0x34, 0xa7, 0xd1, 0x7a, 0x73, 0xa9, 0x3d, 0x55, 0x2c, 0x7c, 0xfb, 0xef, 0x58, 0xc5, 0xf7,
+	0x8e, 0x85, 0x6f, 0xff, 0x19, 0xeb, 0x63, 0xa8, 0xfa, 0x34, 0x0e, 0x08, 0xf7, 0xc4, 0x82, 0x26,
+	0x35, 0x2c, 0xa9, 0x57, 0xa8, 0x68, 0xd0, 0x55, 0x58, 0xe3, 0x0a, 0x0a, 0xe9, 0x5f, 0x42, 0x35,
+	0x28, 0xf7, 0xdb, 0xae, 0x3b, 0xe8, 0x38, 0xbd, 0xe1, 0x59, 0xc7, 0x7c, 0x81, 0x00, 0xf2, 0xee,
+	0xf9, 0x45, 0xbf, 0x7b, 0x6a, 0x1a, 0xc9, 0xfa, 0x62, 0x38, 0x18, 0xb6, 0xbb, 0x66, 0x06, 0xed,
+	0x81, 0xd9, 0x1e, 0x0e, 0x7a, 0xde, 0x36, 0x3b, 0x8b, 0x4c, 0xa8, 0x9c, 0xbb, 0x83, 0xf3, 0x9e,
+	0x97, 0xf2, 0x72, 0x8d, 0x1e, 0x94, 0xb7, 0x72, 0x44, 0x15, 0x28, 0x0e, 0xba, 0xae, 0x97, 0x48,
+	0xcd, 0x17, 0xa8, 0xac, 0x02, 0x5f, 0x1e, 0x79, 0x6f, 0x4d, 0x63, 0xb3, 0x39, 0x32, 0x33, 0x9b,
+	0x4d, 0xcb, 0xcc, 0x6e, 0x36, 0xc7, 0x66, 0xae, 0xf1, 0x0b, 0xe4, 0x92, 0xa1, 0x80, 0x3e, 0x82,
+	0x7c, 0xb4, 0x98, 0x8f, 0x08, 0x57, 0x8d, 0x55, 0xd5, 0x6d, 0x9f, 0x42, 0xa8, 0x0e, 0xc5, 0xf5,
+	0xf3, 0xea, 0x41, 0x94, 0x4e, 0xb2, 0x35, 0x98, 0xcc, 0x11, 0xf5, 0x53, 0x75, 0x7f, 0xa8, 0xf5,
+	0x3b, 0xfb, 0xb7, 0xfb, 0x03, 0xe3, 0xf7, 0xfb, 0x03, 0xe3, 0xee, 0xfe, 0xc0, 0xb8, 0x3a, 0xd4,
+	0x65, 0xa0, 0x4c, 0xcd, 0xeb, 0xff, 0x18, 0xfc, 0xa3, 0xbc, 0x72, 0x3b, 0xfe, 0x2b, 0x00, 0x00,
+	0xff, 0xff, 0x52, 0x8a, 0xc5, 0xe7, 0x16, 0x06, 0x00, 0x00,
 }
 
 func (m *Gateway) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -812,49 +869,59 @@ func (m *Gateway) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Gateway) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Gateway) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Servers) > 0 {
-		for _, msg := range m.Servers {
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintGateway(dAtA, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(dAtA[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.Selector) > 0 {
-		for k, _ := range m.Selector {
-			dAtA[i] = 0x12
-			i++
+		for k := range m.Selector {
 			v := m.Selector[k]
-			mapSize := 1 + len(k) + sovGateway(uint64(len(k))) + 1 + len(v) + sovGateway(uint64(len(v)))
-			i = encodeVarintGateway(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0xa
-			i++
-			i = encodeVarintGateway(dAtA, i, uint64(len(k)))
-			i += copy(dAtA[i:], k)
-			dAtA[i] = 0x12
-			i++
+			baseI := i
+			i -= len(v)
+			copy(dAtA[i:], v)
 			i = encodeVarintGateway(dAtA, i, uint64(len(v)))
-			i += copy(dAtA[i:], v)
+			i--
+			dAtA[i] = 0x12
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintGateway(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintGateway(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x12
 		}
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Servers) > 0 {
+		for iNdEx := len(m.Servers) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Servers[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintGateway(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
 	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *Server) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -862,67 +929,73 @@ func (m *Server) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Server) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Server) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Port != nil {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(m.Port.Size()))
-		n1, err := m.Port.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if len(m.Hosts) > 0 {
-		for _, s := range m.Hosts {
-			dAtA[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if m.Tls != nil {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(m.Tls.Size()))
-		n2, err := m.Tls.MarshalTo(dAtA[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	if len(m.Bind) > 0 {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(len(m.Bind)))
-		i += copy(dAtA[i:], m.Bind)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.DefaultEndpoint) > 0 {
-		dAtA[i] = 0x2a
-		i++
+		i -= len(m.DefaultEndpoint)
+		copy(dAtA[i:], m.DefaultEndpoint)
 		i = encodeVarintGateway(dAtA, i, uint64(len(m.DefaultEndpoint)))
-		i += copy(dAtA[i:], m.DefaultEndpoint)
+		i--
+		dAtA[i] = 0x2a
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Bind) > 0 {
+		i -= len(m.Bind)
+		copy(dAtA[i:], m.Bind)
+		i = encodeVarintGateway(dAtA, i, uint64(len(m.Bind)))
+		i--
+		dAtA[i] = 0x22
 	}
-	return i, nil
+	if m.Tls != nil {
+		{
+			size, err := m.Tls.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintGateway(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Hosts) > 0 {
+		for iNdEx := len(m.Hosts) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Hosts[iNdEx])
+			copy(dAtA[i:], m.Hosts[iNdEx])
+			i = encodeVarintGateway(dAtA, i, uint64(len(m.Hosts[iNdEx])))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if m.Port != nil {
+		{
+			size, err := m.Port.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintGateway(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *Server_TLSOptions) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -930,99 +1003,115 @@ func (m *Server_TLSOptions) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Server_TLSOptions) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Server_TLSOptions) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if len(m.VerifyCertificateHash) > 0 {
+		for iNdEx := len(m.VerifyCertificateHash) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.VerifyCertificateHash[iNdEx])
+			copy(dAtA[i:], m.VerifyCertificateHash[iNdEx])
+			i = encodeVarintGateway(dAtA, i, uint64(len(m.VerifyCertificateHash[iNdEx])))
+			i--
+			dAtA[i] = 0x62
+		}
+	}
+	if len(m.VerifyCertificateSpki) > 0 {
+		for iNdEx := len(m.VerifyCertificateSpki) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.VerifyCertificateSpki[iNdEx])
+			copy(dAtA[i:], m.VerifyCertificateSpki[iNdEx])
+			i = encodeVarintGateway(dAtA, i, uint64(len(m.VerifyCertificateSpki[iNdEx])))
+			i--
+			dAtA[i] = 0x5a
+		}
+	}
+	if len(m.CredentialName) > 0 {
+		i -= len(m.CredentialName)
+		copy(dAtA[i:], m.CredentialName)
+		i = encodeVarintGateway(dAtA, i, uint64(len(m.CredentialName)))
+		i--
+		dAtA[i] = 0x52
+	}
+	if len(m.CipherSuites) > 0 {
+		for iNdEx := len(m.CipherSuites) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.CipherSuites[iNdEx])
+			copy(dAtA[i:], m.CipherSuites[iNdEx])
+			i = encodeVarintGateway(dAtA, i, uint64(len(m.CipherSuites[iNdEx])))
+			i--
+			dAtA[i] = 0x4a
+		}
+	}
+	if m.MaxProtocolVersion != 0 {
+		i = encodeVarintGateway(dAtA, i, uint64(m.MaxProtocolVersion))
+		i--
+		dAtA[i] = 0x40
+	}
+	if m.MinProtocolVersion != 0 {
+		i = encodeVarintGateway(dAtA, i, uint64(m.MinProtocolVersion))
+		i--
+		dAtA[i] = 0x38
+	}
+	if len(m.SubjectAltNames) > 0 {
+		for iNdEx := len(m.SubjectAltNames) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SubjectAltNames[iNdEx])
+			copy(dAtA[i:], m.SubjectAltNames[iNdEx])
+			i = encodeVarintGateway(dAtA, i, uint64(len(m.SubjectAltNames[iNdEx])))
+			i--
+			dAtA[i] = 0x32
+		}
+	}
+	if len(m.CaCertificates) > 0 {
+		i -= len(m.CaCertificates)
+		copy(dAtA[i:], m.CaCertificates)
+		i = encodeVarintGateway(dAtA, i, uint64(len(m.CaCertificates)))
+		i--
+		dAtA[i] = 0x2a
+	}
+	if len(m.PrivateKey) > 0 {
+		i -= len(m.PrivateKey)
+		copy(dAtA[i:], m.PrivateKey)
+		i = encodeVarintGateway(dAtA, i, uint64(len(m.PrivateKey)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.ServerCertificate) > 0 {
+		i -= len(m.ServerCertificate)
+		copy(dAtA[i:], m.ServerCertificate)
+		i = encodeVarintGateway(dAtA, i, uint64(len(m.ServerCertificate)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.Mode != 0 {
+		i = encodeVarintGateway(dAtA, i, uint64(m.Mode))
+		i--
+		dAtA[i] = 0x10
+	}
 	if m.HttpsRedirect {
-		dAtA[i] = 0x8
-		i++
+		i--
 		if m.HttpsRedirect {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
 		}
-		i++
+		i--
+		dAtA[i] = 0x8
 	}
-	if m.Mode != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(m.Mode))
-	}
-	if len(m.ServerCertificate) > 0 {
-		dAtA[i] = 0x1a
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(len(m.ServerCertificate)))
-		i += copy(dAtA[i:], m.ServerCertificate)
-	}
-	if len(m.PrivateKey) > 0 {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(len(m.PrivateKey)))
-		i += copy(dAtA[i:], m.PrivateKey)
-	}
-	if len(m.CaCertificates) > 0 {
-		dAtA[i] = 0x2a
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(len(m.CaCertificates)))
-		i += copy(dAtA[i:], m.CaCertificates)
-	}
-	if len(m.SubjectAltNames) > 0 {
-		for _, s := range m.SubjectAltNames {
-			dAtA[i] = 0x32
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if m.MinProtocolVersion != 0 {
-		dAtA[i] = 0x38
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(m.MinProtocolVersion))
-	}
-	if m.MaxProtocolVersion != 0 {
-		dAtA[i] = 0x40
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(m.MaxProtocolVersion))
-	}
-	if len(m.CipherSuites) > 0 {
-		for _, s := range m.CipherSuites {
-			dAtA[i] = 0x4a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			dAtA[i] = uint8(l)
-			i++
-			i += copy(dAtA[i:], s)
-		}
-	}
-	if len(m.CredentialName) > 0 {
-		dAtA[i] = 0x52
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(len(m.CredentialName)))
-		i += copy(dAtA[i:], m.CredentialName)
-	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
-	}
-	return i, nil
+	return len(dAtA) - i, nil
 }
 
 func (m *Port) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
 	if err != nil {
 		return nil, err
 	}
@@ -1030,41 +1119,51 @@ func (m *Port) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Port) MarshalTo(dAtA []byte) (int, error) {
-	var i int
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Port) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Number != 0 {
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(m.Number))
-	}
-	if len(m.Protocol) > 0 {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintGateway(dAtA, i, uint64(len(m.Protocol)))
-		i += copy(dAtA[i:], m.Protocol)
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	if len(m.Name) > 0 {
-		dAtA[i] = 0x1a
-		i++
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
 		i = encodeVarintGateway(dAtA, i, uint64(len(m.Name)))
-		i += copy(dAtA[i:], m.Name)
+		i--
+		dAtA[i] = 0x1a
 	}
-	if m.XXX_unrecognized != nil {
-		i += copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Protocol) > 0 {
+		i -= len(m.Protocol)
+		copy(dAtA[i:], m.Protocol)
+		i = encodeVarintGateway(dAtA, i, uint64(len(m.Protocol)))
+		i--
+		dAtA[i] = 0x12
 	}
-	return i, nil
+	if m.Number != 0 {
+		i = encodeVarintGateway(dAtA, i, uint64(m.Number))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
 }
 
 func encodeVarintGateway(dAtA []byte, offset int, v uint64) int {
+	offset -= sovGateway(v)
+	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return offset + 1
+	return base
 }
 func (m *Gateway) Size() (n int) {
 	if m == nil {
@@ -1172,6 +1271,18 @@ func (m *Server_TLSOptions) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovGateway(uint64(l))
 	}
+	if len(m.VerifyCertificateSpki) > 0 {
+		for _, s := range m.VerifyCertificateSpki {
+			l = len(s)
+			n += 1 + l + sovGateway(uint64(l))
+		}
+	}
+	if len(m.VerifyCertificateHash) > 0 {
+		for _, s := range m.VerifyCertificateHash {
+			l = len(s)
+			n += 1 + l + sovGateway(uint64(l))
+		}
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -1202,14 +1313,7 @@ func (m *Port) Size() (n int) {
 }
 
 func sovGateway(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
+	return (math_bits.Len64(x|1) + 6) / 7
 }
 func sozGateway(x uint64) (n int) {
 	return sovGateway(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -1948,6 +2052,70 @@ func (m *Server_TLSOptions) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.CredentialName = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VerifyCertificateSpki", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGateway
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGateway
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGateway
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VerifyCertificateSpki = append(m.VerifyCertificateSpki, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VerifyCertificateHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGateway
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthGateway
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthGateway
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VerifyCertificateHash = append(m.VerifyCertificateHash, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

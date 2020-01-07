@@ -1,9 +1,11 @@
 ---
 title: Authentication Policy
 description: Authentication policy for Istio services.
-location: https://istio.io/docs/reference/config/istio.authentication.v1alpha1.html
+location: https://istio.io/docs/reference/config/security/istio.authentication.v1alpha1.html
 layout: protoc-gen-docs
 generator: protoc-gen-docs
+weight: 10
+aliases: [/docs/reference/config/istio.authentication.v1alpha1]
 number_of_entries: 11
 ---
 <p>This package defines user-facing authentication policy.</p>
@@ -11,9 +13,8 @@ number_of_entries: 11
 <h2 id="Jwt">Jwt</h2>
 <section>
 <p>JSON Web Token (JWT) token format for authentication as defined by
-<a href="https://tools.ietf.org/html/rfc7519">RFC 7519</a>. See <a href="https://tools.ietf.org/html/rfc6749">OAuth
-2.0</a> and <a href="http://openid.net/connect">OIDC
-1.0</a> for how this is used in the whole
+<a href="https://tools.ietf.org/html/rfc7519">RFC 7519</a>. See <a href="https://tools.ietf.org/html/rfc6749">OAuth 2.0</a> and
+<a href="http://openid.net/connect">OIDC 1.0</a> for how this is used in the whole
 authentication flow.</p>
 
 <p>For example:</p>
@@ -32,9 +33,9 @@ prefix <code>/status/</code>. This is useful to expose some paths for public acc
 keep others JWT validated.</p>
 
 <pre><code class="language-yaml">issuer: https://example.com
-jwks_uri: https://example.com/.well-known/jwks.json
-trigger_rules:
-- excluded_paths:
+jwksUri: https://example.com/.well-known/jwks.json
+triggerRules:
+- excludedPaths:
   - exact: /health_check
   - prefix: /status/
 </code></pre>
@@ -43,9 +44,9 @@ trigger_rules:
 validation on a specific set of paths but keep others public accessible.</p>
 
 <pre><code class="language-yaml">issuer: https://example.com
-jwks_uri: https://example.com/.well-known/jwks.json
-trigger_rules:
-- included_paths:
+jwksUri: https://example.com/.well-known/jwks.json
+triggerRules:
+- includedPaths:
   - prefix: /admin
 </code></pre>
 
@@ -54,11 +55,11 @@ trigger_rules:
 <code>/status/version</code> will require a valid JWT to proceed.</p>
 
 <pre><code class="language-yaml">issuer: https://example.com
-jwks_uri: https://example.com/.well-known/jwks.json
-trigger_rules:
-- excluded_paths:
+jwksUri: https://example.com/.well-known/jwks.json
+triggerRules:
+- excludedPaths:
   - exact: /status/version
-  included_paths:
+  includedPaths:
   - prefix: /status/
 </code></pre>
 
@@ -68,6 +69,7 @@ trigger_rules:
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -82,6 +84,9 @@ Usually a URL or an email address.</p>
 <p>Example: https://securetoken.google.com
 Example: 1234567-compute@developer.gserviceaccount.com</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 <tr id="Jwt-audiences">
@@ -103,14 +108,16 @@ audiences will be accepted.</p>
 </code></pre>
 
 </td>
+<td>
+No
+</td>
 </tr>
 <tr id="Jwt-jwks_uri">
 <td><code>jwksUri</code></td>
 <td><code>string</code></td>
 <td>
 <p>URL of the provider&rsquo;s public key set to validate signature of the
-JWT. See <a href="https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata">OpenID
-Discovery</a>.</p>
+JWT. See <a href="https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata">OpenID Discovery</a>.</p>
 
 <p>Optional if the key set document can either (a) be retrieved from
 <a href="https://openid.net/specs/openid-connect-discovery-1_0.html">OpenID
@@ -120,6 +127,25 @@ Google service account).</p>
 
 <p>Example: <code>https://www.googleapis.com/oauth2/v1/certs</code></p>
 
+<p>Note: Only one of jwks_uri and jwks should be used.</p>
+
+</td>
+<td>
+No
+</td>
+</tr>
+<tr id="Jwt-jwks">
+<td><code>jwks</code></td>
+<td><code>string</code></td>
+<td>
+<p>JSON Web Key Set of public keys to validate signature of the JWT.
+See https://auth0.com/docs/jwks.</p>
+
+<p>Note: Only one of jwks_uri and jwks should be used.</p>
+
+</td>
+<td>
+No
 </td>
 </tr>
 <tr id="Jwt-jwt_headers">
@@ -130,8 +156,11 @@ Google service account).</p>
 header name.</p>
 
 <p>For example, if <code>header=x-goog-iap-jwt-assertion</code>, the header
-format will be x-goog-iap-jwt-assertion: <JWT>.</p>
+format will be <code>x-goog-iap-jwt-assertion: &lt;JWT&gt;</code>.</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 <tr id="Jwt-jwt_params">
@@ -144,10 +173,13 @@ query parameter name.</p>
 <p>For example, <code>query=jwt_token</code>.</p>
 
 </td>
+<td>
+No
+</td>
 </tr>
 <tr id="Jwt-trigger_rules">
 <td><code>triggerRules</code></td>
-<td><code><a href="#Jwt-TriggerRule">Jwt.TriggerRule[]</a></code></td>
+<td><code><a href="#Jwt-TriggerRule">TriggerRule[]</a></code></td>
 <td>
 <p>List of trigger rules to decide if this JWT should be used to validate the
 request. The JWT validation happens if any one of the rules matched.
@@ -155,6 +187,9 @@ If the list is not empty and none of the rules matched, authentication will
 skip the JWT validation.
 Leave this empty to always trigger the JWT validation.</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 </tbody>
@@ -171,6 +206,7 @@ and only if both rules, excluded<em>paths and include</em>paths are satisfied.</
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -182,6 +218,9 @@ and only if both rules, excluded<em>paths and include</em>paths are satisfied.</
 request path does not match to any of the path in this list.</p>
 
 </td>
+<td>
+No
+</td>
 </tr>
 <tr id="Jwt-TriggerRule-included_paths">
 <td><code>includedPaths</code></td>
@@ -191,6 +230,9 @@ request path does not match to any of the path in this list.</p>
 rule is satisfied if request path matches at least one of the path in the list.
 If the list is empty, the rule is ignored, in other words the rule is always satisfied.</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 </tbody>
@@ -206,6 +248,7 @@ If the list is empty, the rule is ignored, in other words the rule is always sat
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -221,13 +264,19 @@ be left unset.
 When the flag is false (default), request must have client certificate.</p>
 
 </td>
+<td>
+No
+</td>
 </tr>
 <tr id="MutualTls-mode">
 <td><code>mode</code></td>
-<td><code><a href="#MutualTls-Mode">MutualTls.Mode</a></code></td>
+<td><code><a href="#MutualTls-Mode">Mode</a></code></td>
 <td>
 <p>Defines the mode of mTLS authentication.</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 </tbody>
@@ -274,6 +323,7 @@ Currently, only JWT is supported for origin authentication.</p>
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -283,6 +333,9 @@ Currently, only JWT is supported for origin authentication.</p>
 <td>
 <p>Jwt params for the method.</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 </tbody>
@@ -302,6 +355,7 @@ The type can be progammatically determine by checking the type of the
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -311,6 +365,9 @@ The type can be progammatically determine by checking the type of the
 <td>
 <p>Set if mTLS is used.</p>
 
+</td>
+<td>
+Yes
 </td>
 </tr>
 </tbody>
@@ -353,7 +410,7 @@ spec:
 <pre><code class="language-yaml">apiVersion: authentication.istio.io/v1alpha1
 kind: Policy
 metadata:
-  name: productpage_mTLS_disable
+  name: productpage-mTLS-disable
   namespace: frod
 spec:
   targets:
@@ -366,10 +423,10 @@ for productpage:9000 except the path &lsquo;/health_check&rsquo; . Principal is 
 <pre><code class="language-yaml">apiVersion: authentication.istio.io/v1alpha1
 kind: Policy
 metadata:
-  name: productpage_mTLS_with_JWT
+  name: productpage-mTLS-with-JWT
   namespace: frod
 spec:
-  target:
+  targets:
   - name: productpage
     ports:
     - number: 9000
@@ -381,10 +438,10 @@ spec:
       audiences:
       - &quot;productpage&quot;
       jwksUri: &quot;https://www.googleapis.com/oauth2/v1/certs&quot;
-      jwt_headers:
+      jwtHeaders:
       - &quot;x-goog-iap-jwt-assertion&quot;
-      trigger_rules:
-      - excluded_paths:
+      triggerRules:
+      - excludedPaths:
         - exact: /health_check
   principalBinding: USE_ORIGIN
 </code></pre>
@@ -395,6 +452,7 @@ spec:
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -405,6 +463,9 @@ spec:
 <p>List rules to select workloads that the policy should be applied on.
 If empty, policy will be used on all workloads in the same namespace.</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 <tr id="Policy-peers">
@@ -418,6 +479,9 @@ these methods pass, request will be rejected with authentication failed error (4
 Leave the list empty if peer authentication is not required</p>
 
 </td>
+<td>
+No
+</td>
 </tr>
 <tr id="Policy-peer_is_optional">
 <td><code>peerIsOptional</code></td>
@@ -429,6 +493,9 @@ Typically, this is used to delay the rejection decision to next layer (e.g
 authorization).
 This flag is ignored if no authentication defined for peer (peers field is empty).</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 <tr id="Policy-origins">
@@ -445,6 +512,9 @@ are skipped, origin authentication will be ignored, as if it is not defined.
 Leave the list empty if origin authentication is not required.</p>
 
 </td>
+<td>
+No
+</td>
 </tr>
 <tr id="Policy-origin_is_optional">
 <td><code>originIsOptional</code></td>
@@ -456,6 +526,9 @@ Typically, this is used to delay the rejection decision to next layer (e.g
 authorization).
 This flag is ignored if no authentication defined for origin (origins field is empty).</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 <tr id="Policy-principal_binding">
@@ -469,6 +542,9 @@ authentication is not defined, or failed, principal will be left unset.
 In other words, binding rule does not affect the decision to accept or
 reject request.</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 </tbody>
@@ -486,6 +562,7 @@ networking API to avoid dependency.</p>
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -496,6 +573,9 @@ networking API to avoid dependency.</p>
 <p>Valid port number</p>
 
 </td>
+<td>
+Yes
+</td>
 </tr>
 <tr id="PortSelector-name" class="oneof">
 <td><code>name</code></td>
@@ -503,6 +583,9 @@ networking API to avoid dependency.</p>
 <td>
 <p>Port name</p>
 
+</td>
+<td>
+Yes
 </td>
 </tr>
 </tbody>
@@ -547,6 +630,7 @@ networking API to avoid dependency.</p>
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -557,6 +641,9 @@ networking API to avoid dependency.</p>
 <p>exact string match.</p>
 
 </td>
+<td>
+Yes
+</td>
 </tr>
 <tr id="StringMatch-prefix" class="oneof">
 <td><code>prefix</code></td>
@@ -564,6 +651,9 @@ networking API to avoid dependency.</p>
 <td>
 <p>prefix-based match.</p>
 
+</td>
+<td>
+Yes
 </td>
 </tr>
 <tr id="StringMatch-suffix" class="oneof">
@@ -573,6 +663,9 @@ networking API to avoid dependency.</p>
 <p>suffix-based match.</p>
 
 </td>
+<td>
+Yes
+</td>
 </tr>
 <tr id="StringMatch-regex" class="oneof">
 <td><code>regex</code></td>
@@ -581,6 +674,9 @@ networking API to avoid dependency.</p>
 <p>ECMAscript style regex-based match as defined by <a href="http://en.cppreference.com/w/cpp/regex/ecmascript">EDCA-262</a>.
 Example: &ldquo;^/pets/(.*?)?&rdquo;</p>
 
+</td>
+<td>
+Yes
 </td>
 </tr>
 </tbody>
@@ -597,6 +693,7 @@ if it is associated with the service name and service port(s) specified in the s
 <th>Field</th>
 <th>Type</th>
 <th>Description</th>
+<th>Required</th>
 </tr>
 </thead>
 <tbody>
@@ -604,16 +701,19 @@ if it is associated with the service name and service port(s) specified in the s
 <td><code>name</code></td>
 <td><code>string</code></td>
 <td>
-<p>REQUIRED. The name must be a short name from the service registry. The
+<p>The name must be a short name from the service registry. The
 fully qualified domain name will be resolved in a platform specific manner.</p>
 
+</td>
+<td>
+Yes
 </td>
 </tr>
 <tr id="TargetSelector-ports">
 <td><code>ports</code></td>
 <td><code><a href="#PortSelector">PortSelector[]</a></code></td>
 <td>
-<p>Specifies the ports. Note that this is the port(s) exposed by the service, not workload ports.
+<p>Specifies the ports. Note that this is the port(s) exposed by the service, not workload instance ports.
 For example, if a service is defined as below, then <code>8000</code> should be used, not <code>9000</code>.</p>
 
 <pre><code class="language-yaml">kind: Service
@@ -630,6 +730,9 @@ spec:
 
 <p>Leave empty to match all ports that are exposed.</p>
 
+</td>
+<td>
+No
 </td>
 </tr>
 </tbody>

@@ -20,7 +20,7 @@ import (
 	"github.com/maistra/ior/pkg/galley"
 	"github.com/maistra/ior/pkg/version"
 	"github.com/spf13/cobra"
-	"istio.io/istio/pkg/log"
+	"istio.io/pkg/log"
 )
 
 var (
