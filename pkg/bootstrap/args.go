@@ -18,18 +18,23 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+
+	"istio.io/istio/pkg/mcp/creds"
 )
 
 // Args provides configuration parameters for IOR
 type Args struct {
-	McpAddr   string
+	McpAddr           string
+	CredentialOptions *creds.Options
+
 	Namespace string
 }
 
 // DefaultArgs returns a new set of arguments, initialized to the defaults
 func DefaultArgs() *Args {
 	return &Args{
-		McpAddr: "istio-galley:9901",
+		McpAddr:           "mcp://istio-galley:9901",
+		CredentialOptions: creds.DefaultOptions(),
 	}
 }
 

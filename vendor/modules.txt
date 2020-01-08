@@ -1,5 +1,7 @@
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
+# github.com/fsnotify/fsnotify v1.4.7
+github.com/fsnotify/fsnotify
 # github.com/gogo/protobuf v1.3.0
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/jsonpb
@@ -150,6 +152,7 @@ istio.io/gogo-genproto/googleapis/google/rpc
 istio.io/istio/galley/pkg/metadata
 istio.io/istio/galley/pkg/runtime/resource
 istio.io/istio/pkg/kube
+istio.io/istio/pkg/mcp/creds
 istio.io/istio/pkg/mcp/internal
 istio.io/istio/pkg/mcp/monitoring
 istio.io/istio/pkg/mcp/rate
@@ -157,6 +160,7 @@ istio.io/istio/pkg/mcp/sink
 istio.io/istio/pkg/mcp/status
 istio.io/istio/pkg/mcp/testing/monitoring
 # istio.io/pkg v0.0.0-20191030005435-10d06b6b315e
+istio.io/pkg/filewatcher
 istio.io/pkg/log
 istio.io/pkg/monitoring
 # k8s.io/api v0.17.0 => k8s.io/api v0.0.0-20191003000013-35e20aa79eb8

@@ -39,7 +39,12 @@ func getRootCmd(args []string) *cobra.Command {
 
 			log.Infof("Starting IOR %s", version.Info)
 
-			return galley.ConnectToGalley(cliArgs)
+			g, err := galley.New(cliArgs)
+			if err != nil {
+				return err
+			}
+
+			return g.Run()
 		},
 	}
 
@@ -53,5 +58,6 @@ func getRootCmd(args []string) *cobra.Command {
 	loggingOptions.AttachCobraFlags(rootCmd)
 
 	rootCmd.AddCommand(version.GetVersionCmd())
+	cliArgs.CredentialOptions.AttachCobraFlags(rootCmd)
 	return rootCmd
 }

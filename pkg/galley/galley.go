@@ -17,6 +17,9 @@ package galley
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"time"
 
 	"google.golang.org/grpc"
 	mcpapi "istio.io/api/mcp/v1alpha1"
@@ -27,25 +30,86 @@ import (
 	"github.com/maistra/ior/pkg/route"
 	networking "istio.io/api/networking/v1alpha3"
 	_ "istio.io/istio/galley/pkg/metadata" // Import the resource package to pull in all proto types.
+	"istio.io/istio/pkg/mcp/creds"
 	"istio.io/istio/pkg/mcp/sink"
 	"istio.io/istio/pkg/mcp/testing/monitoring"
 )
 
-// ConnectToGalley ...
-func ConnectToGalley(args *bootstrap.Args) error {
+const (
+	requiredCertCheckFreq = 1 * time.Second
+)
+
+// Galley is responsible to interact with Galley server
+type Galley struct {
+	args *bootstrap.Args
+}
+
+// New returns a Galley instance or an error
+func New(args *bootstrap.Args) (*Galley, error) {
 	if err := args.Validate(); err != nil {
-		return fmt.Errorf("error validating arguments: %v", err)
+		return nil, fmt.Errorf("error validating arguments: %v", err)
 	}
 
 	log.Infof("Started IOR with\n%v", args)
 
-	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, args.McpAddr, grpc.WithInsecure())
+	return &Galley{args: args}, nil
+}
+
+// Run connects to Galley and runs the main loop
+func (g *Galley) Run() error {
+
+	url, err := url.Parse(g.args.McpAddr)
+
 	if err != nil {
-		return fmt.Errorf("Unable to dial MCP Server %q: %v", args.McpAddr, err)
+		return fmt.Errorf("invalid MCP URL %s %v", g.args.McpAddr, err)
 	}
 
-	r, err := route.New(args)
+	securityOption := grpc.WithInsecure()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	switch url.Scheme {
+	case "mcp":
+	case "mcps":
+		if g.args.CredentialOptions == nil {
+			return fmt.Errorf("no credentials specified with secure MCP scheme")
+		}
+
+		requiredFiles := []string{g.args.CredentialOptions.CertificateFile, g.args.CredentialOptions.KeyFile, g.args.CredentialOptions.CACertificateFile}
+		log.Infof("Secure MCP configured. Waiting for required certificate files to become available: %v", requiredFiles)
+		for len(requiredFiles) > 0 {
+			if _, err = os.Stat(requiredFiles[0]); os.IsNotExist(err) {
+				log.Infof("%v not found. Checking again in %v", requiredFiles[0], requiredCertCheckFreq)
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(requiredCertCheckFreq):
+					// retry
+				}
+				continue
+			}
+
+			log.Infof("%v found", requiredFiles[0])
+			requiredFiles = requiredFiles[1:]
+		}
+
+		watcher, er := creds.WatchFiles(ctx.Done(), g.args.CredentialOptions)
+		if er != nil {
+			return er
+		}
+		credentials := creds.CreateForClient(url.Hostname(), watcher)
+		securityOption = grpc.WithTransportCredentials(credentials)
+
+	default:
+		return fmt.Errorf("unknown MCP URL %s", g.args.McpAddr)
+	}
+
+	conn, err := grpc.DialContext(ctx, url.Host, securityOption)
+	if err != nil {
+		return err
+	}
+
+	r, err := route.New(g.args)
 	if err != nil {
 		return fmt.Errorf("Error creating a route object: %v", err)
 	}
