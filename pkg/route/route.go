@@ -32,7 +32,6 @@ import (
 
 const (
 	maistraPrefix          = "maistra.io/"
-	ingressService         = "istio-ingressgateway"
 	generatedByLabel       = maistraPrefix + "generated-by"
 	generatedByValue       = "ior"
 	originalHostAnnotation = maistraPrefix + "original-host"
@@ -55,14 +54,20 @@ type syncedRoute struct {
 type Route struct {
 	args   *bootstrap.Args
 	client *routev1.RouteV1Client
+	ig     *IngressGateway
 	routes map[string]*syncedRoute
 }
 
 // New ...
 func New(args *bootstrap.Args) (*Route, error) {
-	r := &Route{args: args}
+	ig, err := NewIG()
+	if err != nil {
+		return nil, err
+	}
 
-	err := r.initClient()
+	r := &Route{args: args, ig: ig}
+
+	err = r.initClient()
 	if err != nil {
 		return nil, err
 	}
@@ -119,12 +124,11 @@ func (r *Route) Sync(gatewaysInfo []GatewayInfo) error {
 	for _, gatewayInfo := range gatewaysInfo {
 		for _, server := range gatewayInfo.Gateway.Servers {
 			for _, host := range server.GetHosts() {
-				sRoute, ok := r.routes[host]
-				_ = sRoute // FIXME
+				_, ok := r.routes[host]
 				if ok {
 					r.editRoute(gatewayInfo.Metadata, host)
 				} else {
-					r.createRoute(gatewayInfo.Metadata, host, server.Tls != nil)
+					r.createRoute(gatewayInfo.Metadata, gatewayInfo.Gateway, host, server.Tls != nil)
 				}
 			}
 		}
@@ -157,14 +161,14 @@ func (r *Route) deleteRoute(route *v1.Route) {
 	}
 }
 
-func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls bool) {
+func (r *Route) createRoute(metadata *mcp.Metadata, gateway *networking.Gateway, originalHost string, tls bool) {
 	var wildcard = v1.WildcardPolicyNone
 	actualHost := originalHost
 
 	log.Debugf("Creating route for hostname %s", originalHost)
 
 	if originalHost == "*" {
-		log.Infof("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create one instead.", metadata.Name)
+		log.Infof("Gateway %s: Wildcard * is not supported at the moment. Letting OpenShift create the hostname instead.", metadata.Name)
 		actualHost = ""
 	} else if strings.HasPrefix(originalHost, "*.") {
 		// Wildcards are not enabled by default in OCP 3.x.
@@ -180,15 +184,21 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 		targetPort = "https"
 	}
 
-	namespace, gatewayName := util.ExtractNameNamespace(metadata.Name)
+	gatewayNamespace, gatewayName := util.ExtractNameNamespace(metadata.Name)
 
-	// FIXME: Can we create the route in the same namespace as the Gateway pointing to a service in the istio-system namespace?
-	nr, err := r.client.Routes(r.args.Namespace).Create(&v1.Route{
+	// FIXME: Should we look for ingress gateway pod/service in all mesh members instead of just in the control plane namespace?
+	serviceNamespace, serviceName, err := r.ig.FindService([]string{r.args.Namespace}, gateway)
+	if err != nil {
+		log.Errorf("Error creating a route for host %s (gateway %s): %s", originalHost, metadata.Name, err)
+		return
+	}
+
+	nr, err := r.client.Routes(serviceNamespace).Create(&v1.Route{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-", gatewayName),
+			GenerateName: fmt.Sprintf("%s-%s-", gatewayNamespace, gatewayName),
 			Labels: map[string]string{
 				generatedByLabel:      generatedByValue,
-				gatewayNamespaceLabel: namespace,
+				gatewayNamespaceLabel: gatewayNamespace,
 				gatewayNameLabel:      gatewayName,
 			},
 			Annotations: map[string]string{
@@ -204,7 +214,7 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 				},
 			},
 			To: v1.RouteTargetReference{
-				Name: ingressService,
+				Name: serviceName,
 			},
 			TLS:            tlsConfig,
 			WildcardPolicy: wildcard,
@@ -212,14 +222,11 @@ func (r *Route) createRoute(metadata *mcp.Metadata, originalHost string, tls boo
 	})
 
 	if err != nil {
-		log.Errorf("Error creating a route for host %s: %s", originalHost, err)
+		log.Errorf("Error creating a route for host %s (gateway %s): %s", originalHost, metadata.Name, err)
+		return
 	}
 
-	if actualHost == "" {
-		log.Infof("Generated hostname by OpenShift: %s", nr.Spec.Host)
-	}
-
-	log.Infof("Created route %s/%s for hostname %s", nr.ObjectMeta.Namespace, nr.ObjectMeta.Name, originalHost)
+	log.Infof("Created route %s/%s for hostname %s (gateway %s)", nr.ObjectMeta.Namespace, nr.ObjectMeta.Name, nr.Spec.Host, metadata.Name)
 
 	r.routes[originalHost] = &syncedRoute{
 		route: nr,
