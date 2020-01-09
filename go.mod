@@ -11,6 +11,7 @@ require (
 	istio.io/istio v0.0.0-20200106190329-17f6bfc3d712
 	istio.io/pkg v0.0.0-20191030005435-10d06b6b315e
 	k8s.io/apimachinery v0.17.0
+	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 )
 
 // Kubernetes makes it challenging to depend on their libraries. To get around this, we need to force
