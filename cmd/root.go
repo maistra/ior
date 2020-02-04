@@ -29,7 +29,7 @@ var (
 	cliArgs        = bootstrap.DefaultArgs()
 )
 
-func getRootCmd(args []string) *cobra.Command {
+func newRootCmd() *cobra.Command {
 
 	rootCmd := &cobra.Command{
 		Use:   "ior",
@@ -48,7 +48,6 @@ func getRootCmd(args []string) *cobra.Command {
 		},
 	}
 
-	rootCmd.SetArgs(args)
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 	rootCmd.PersistentFlags().StringVarP(&cliArgs.McpAddr, "mcp-address", "", cliArgs.McpAddr,
 		"Galley's MCP server address")

@@ -17,7 +17,7 @@ package main
 import "os"
 
 func main() {
-	rootCmd := getRootCmd(os.Args[1:])
+	rootCmd := newRootCmd()
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(-1)
