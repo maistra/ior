@@ -35,7 +35,9 @@ func newRootCmd() *cobra.Command {
 		Use:   "ior",
 		Short: "Connects to Galley and manages OpenShift Routes based on Istio Gateways",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			log.Configure(loggingOptions)
+			if err := log.Configure(loggingOptions); err != nil {
+				return err
+			}
 
 			log.Infof("Starting IOR %s", version.Info)
 
