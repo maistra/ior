@@ -32,7 +32,7 @@ var (
 func getRootCmd(args []string) *cobra.Command {
 
 	rootCmd := &cobra.Command{
-		Use:   "server",
+		Use:   "ior",
 		Short: "Connects to Galley and manages OpenShift Routes based on Istio Gateways",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			log.Configure(loggingOptions)
