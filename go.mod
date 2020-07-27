@@ -6,6 +6,7 @@ require (
 	github.com/openshift/api v3.9.1-0.20191008181517-e4fd21196097+incompatible
 	github.com/openshift/client-go v0.0.0-20200107172225-986d9a10f405
 	github.com/spf13/cobra v0.0.5
+	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect
 	google.golang.org/grpc v1.24.0
 	istio.io/api v0.0.0-20191115173247-e1a1952e5b81
 	istio.io/istio v0.0.0-20200106190329-17f6bfc3d712
