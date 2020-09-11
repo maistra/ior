@@ -128,7 +128,7 @@ func (r *Route) Sync(gatewaysInfo []GatewayInfo) error {
 				if ok {
 					r.editRoute(gatewayInfo.Metadata, host)
 				} else {
-					r.createRoute(gatewayInfo.Metadata, gatewayInfo.Gateway, host, server.Tls != nil)
+					r.createRoute(gatewayInfo.Metadata, gatewayInfo.Gateway, host, server)
 				}
 			}
 		}
@@ -161,7 +161,7 @@ func (r *Route) deleteRoute(route *v1.Route) {
 	}
 }
 
-func (r *Route) createRoute(metadata *mcp.Metadata, gateway *networking.Gateway, originalHost string, tls bool) {
+func (r *Route) createRoute(metadata *mcp.Metadata, gateway *networking.Gateway, originalHost string, server *networking.Server) {
 	var wildcard = v1.WildcardPolicyNone
 	actualHost := originalHost
 
@@ -179,8 +179,11 @@ func (r *Route) createRoute(metadata *mcp.Metadata, gateway *networking.Gateway,
 
 	var tlsConfig *v1.TLSConfig
 	targetPort := "http2"
-	if tls {
+	if server.Tls != nil {
 		tlsConfig = &v1.TLSConfig{Termination: v1.TLSTerminationPassthrough}
+		if server.Tls.HttpsRedirect {
+			tlsConfig.InsecureEdgeTerminationPolicy = v1.InsecureEdgeTerminationPolicyRedirect
+		}
 		targetPort = "https"
 	}
 
