@@ -1,3 +1,11 @@
+# Issues for this repository are disabled
+
+Issues for this repository are tracked in Red Hat Jira. Please head to <https://issues.redhat.com/browse/MAISTRA> in order to browse or open an issue.
+
+## Obsolete repository
+
+This repository contains code for IOR <= 1.1. Newer versions of IOR are embedded directly in Istio: <https://github.com/maistra/istio>.
+
 # IOR
 `ior` = Istio + OpenShift Routing (I'm terrible with names, sorry)
 
