@@ -55,3 +55,4 @@ Important Makefile variables:
 ```sh
 make VERSION=1.0.0
 ```
+
